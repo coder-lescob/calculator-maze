@@ -1,6 +1,6 @@
 # Maze
 
-A maze on the numworks calculator...
+A big maze on the numworks calculator...
 
 ## BUILD IT
 
