@@ -34,7 +34,6 @@ build:
 	@$(NWLINK) png-icon-o $(ICON) $(ICON_O)
 
 ifeq ($(PLATFORM), simulator)
-	
 	@$(CC) $(C_FLAGS) $(O) $(LD_FLAGS) -o $(TARGET)
 else
 	@$(CC) $(C_FLAGS) $(O) $(ICON_O) $(LD_FLAGS) -o $(TARGET)
