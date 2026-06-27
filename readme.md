@@ -1,6 +1,6 @@
 # Maze
 
-A big maze on the numworks calculator...
+A big maze on the numworks calculator explorable in FPS view...
 
 ## BUILD IT
 
