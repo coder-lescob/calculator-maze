@@ -33,7 +33,7 @@ make PLATFORM=device run
 In order to use the simulator create a file called `sim_path.mak` then define the symbol *SIM* to be the path of your simulator.
 
 ```make
-SIM=path/to/simulator
+SIM := path/to/simulator
 ```
 
 but for this to work you have to build the epsilon simulator see [there](https://github.com/numworks/epsilon) for more information
