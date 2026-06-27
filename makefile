@@ -5,6 +5,8 @@ TARGET := $(BUILD_DIR)/maze.nwa
 SIM_TARGET := $(BUILD_DIR)/maze
 O          := $(BUILD_DIR)/maze.o
 
+NWLINK := npx --yes nwlink
+
 SRC_DIR = src
 SRC = $(wildcard $(SRC_DIR)/*.c)
 
@@ -29,13 +31,13 @@ endif
 build:
 	@mkdir -p $(BUILD_DIR)
 	@$(CC) -c $(C_FLAGS) $(SRC) -o $(O)
-	@nwlink png-icon-o $(ICON) $(ICON_O)
+	@$(NWLINK) png-icon-o $(ICON) $(ICON_O)
 	@$(CC) $(C_FLAGS) $(O) $(ICON_O) $(LD_FLAGS) -o $(TARGET)
 
 send: build
-	@nwlink install-nwa $(TARGET)
+	@$(NWLINK) install-nwa $(TARGET)
 
 sim: build
-	@nwlink nwa-elf $(TARGET) $(SIM_TARGET)
+	@$(NWLINK) nwa-elf $(TARGET) $(SIM_TARGET)
 	@$(SIM) --nwb $(SIM_TARGET)
 	
