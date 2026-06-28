@@ -15,11 +15,18 @@ inline uint16_t get_tile_idx(Vec2 pos, Maze *maze) {
 }
 
 HitInfo raycast_single_ray(Ray ray, Maze *maze) {
+    // thank to https://lodev.org/cgtutor/raycasting.html
+    // for the algorithm
+    
     #define FLOOR_u16(F) (uint16_t)F
     eadk_point_t map_pos = { FLOOR_u16(ray.origine.x), FLOOR_u16(ray.origine.y) };
 
     int8_t step_x, step_y;
     float side_distance_x, side_distance_y;
+
+    /**
+     * TODO: get reed of all theses useless ifs that make the code look like spagettis
+     */
 
     if (ray.direction.x < 0) {
 
@@ -77,6 +84,10 @@ HitInfo raycast_single_ray(Ray ray, Maze *maze) {
     Side hit_side  = UNDEFINED_SIDE;
     uint16_t tile_idx;
 
+    // does not look like but is a really fast loop
+    // not float operation other than addition
+    // and a really fast algorithm
+    
     while (true) {
         if (side_distance_x < side_distance_y) {
             distance         = side_distance_x;
