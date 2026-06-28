@@ -46,7 +46,7 @@ void raycast_render(Vec2 pos, Maze *maze, float player_angle) {
 
         // garentee to have length 1
         Vec2 dir = (Vec2) { cosf(angle), sinf(angle) };
-        float distance = raycast_for_distance(pos, dir, maze);
+        float distance = raycast_for_distance(pos, dir, maze) * cosf(player_angle - angle);
 
         uint16_t wall_height = (uint16_t)(250.0 / distance);
 
