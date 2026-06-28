@@ -30,7 +30,7 @@ int main(void) {
             break;
         }
 
-        eadk_display_push_rect_uniform(eadk_screen_rect, eadk_color_black);
+        //eadk_display_push_rect_uniform(eadk_screen_rect, eadk_color_black);
         
 
         angle += PI * (eadk_keyboard_key_down(keyboad, eadk_key_right) - eadk_keyboard_key_down(keyboad, eadk_key_left)) * dt;
