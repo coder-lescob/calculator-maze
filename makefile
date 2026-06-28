@@ -33,7 +33,11 @@ endif
 
 .PHONY: build 
 build:
-	@mkdir -p $(BUILD_DIR)
+ifeq ($(OS),Window_NT)
+	-@mkdir $(BUILD_DIR)
+else
+	-@mkdir -p $(BUILD_DIR)
+endif
 	@$(NWLINK) png-icon-o $(ICON) $(ICON_O)
 
 ifeq ($(PLATFORM), simulator)
