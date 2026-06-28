@@ -23,8 +23,12 @@ ifeq ($(PLATFORM), simulator)
 else
     CC := arm-none-eabi-gcc
 
-    C_FLAGS := -mthumb -mfloat-abi=hard -mcpu=cortex-m7 -mfpu=fpv5-sp-d16 -DPLATFORM_DEVICE=1 "-I/usr/local/lib/node_modules/nwlink/dist/eadk"
-    LD_FLAGS := -Wl,--relocatable -nostartfiles -lm
+    C_FLAGS = $(shell $(NWLINK) eadk-cflags-device) -MMD -MP
+    LD_FLAGS = $(shell $(NWLINK) eadk-ldflags-device) -lc -lm --specs=nosys.specs -fdata-sections -ffunction-sections \
+  -flto -fno-fat-lto-objects -fwhole-program -fvisibility=internal \
+  -Wl,-e,main \
+  -Wl,-u,eadk_app_name -Wl,-u,eadk_app_icon -Wl,-u,eadk_api_level \
+  -Wl,--gc-sections -Wl,--defsym=end=0
 endif
 
 .PHONY: build 

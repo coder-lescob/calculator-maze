@@ -14,8 +14,12 @@ const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = "
 const uint32_t eadk_api_level  __attribute__((section(".rodata.eadk_api_level"))) = 0;
 
 int main(void) {
-    Maze maze = { .width = 5, .height = 5, .tiles = calloc(sizeof(uint8_t), 5 * 5)};
+    Maze maze = { .width = 20, .height = 20, .tiles = calloc(sizeof(uint8_t), 20 * 20)};
+    maze.tiles[3] = 1;
     Vec2 pos = {0.5, 0.5};
+
+    uint64_t last_time = eadk_timing_millis();
+    float dt = 0;
 
     float angle = 0;
 
@@ -29,8 +33,8 @@ int main(void) {
         eadk_display_push_rect_uniform(eadk_screen_rect, eadk_color_black);
         
 
-        angle += PI * (eadk_keyboard_key_down(keyboad, eadk_key_right) - eadk_keyboard_key_down(keyboad, eadk_key_left)) * 0.016;
-        float movement = (eadk_keyboard_key_down(keyboad, eadk_key_up) - eadk_keyboard_key_down(keyboad, eadk_key_down)) * 0.016;
+        angle += PI * (eadk_keyboard_key_down(keyboad, eadk_key_right) - eadk_keyboard_key_down(keyboad, eadk_key_left)) * dt;
+        float movement = (eadk_keyboard_key_down(keyboad, eadk_key_up) - eadk_keyboard_key_down(keyboad, eadk_key_down)) * dt;
 
         pos = vec_add(pos, vec_scale(movement, (Vec2){cosf(angle), sinf(angle)}));
 
@@ -40,7 +44,9 @@ int main(void) {
         snprintf(msg, 49, "%f %f angle: %f", pos.x, pos.y, angle);
         eadk_display_draw_string(msg, (eadk_point_t) { 0, 0 }, false, eadk_color_white, eadk_color_black);
 
-        // ~60 FPS
-        eadk_timing_msleep(16);
+        eadk_display_wait_for_vblank();
+
+        dt = (eadk_timing_millis() - last_time) / 1000.0f;
+        last_time = eadk_timing_millis();
     }
 }

@@ -18,7 +18,8 @@ float raycast_for_distance(Vec2 pos, Vec2 dir, Maze *maze) {
     uint16_t tile_idx = get_tile_idx(pos, maze);
     float distance = 0.0f;
 
-    Vec2 du = vec_scale(0.01f, dir);
+    float ds = 0.01f;
+    Vec2 du = vec_scale(ds, dir);
 
     while (maze->tiles[tile_idx] == 0) {
         pos = vec_add(pos, du);
@@ -29,7 +30,7 @@ float raycast_for_distance(Vec2 pos, Vec2 dir, Maze *maze) {
         }
         
         tile_idx = get_tile_idx(pos, maze);
-        distance += 0.01f;
+        distance += ds;
     }
 
     return distance;
@@ -47,7 +48,7 @@ void raycast_render(Vec2 pos, Maze *maze, float player_angle) {
         Vec2 dir = (Vec2) { cosf(angle), sinf(angle) };
         float distance = raycast_for_distance(pos, dir, maze);
 
-        uint16_t wall_height = (uint16_t)(500.0 / distance);
+        uint16_t wall_height = (uint16_t)(250.0 / distance);
 
         if (wall_height >= EADK_SCREEN_HEIGHT) {
             wall_height = EADK_SCREEN_HEIGHT;
