@@ -87,7 +87,7 @@ HitInfo raycast_single_ray(Ray ray, Maze *maze) {
             return (HitInfo) {
                 .distance = distance,
                 .block_type = 0,
-                .side = UNDEFINED_SIDE,
+                .side = hit_side,
             };
         }
 
@@ -130,11 +130,11 @@ void raycast_render(Vec2 pos, Maze *maze, float player_angle) {
         eadk_color_t color;
         switch (hitInfo.block_type) {
             case 1:
-                color = (hitInfo.side == HORIZONTAL)? eadk_color_blue : eadk_color_green;
+                color = (hitInfo.side == HORIZONTAL)? eadk_color_blue : eadk_color_blue - 5;
                 break;
             
             default:
-                color = eadk_color_red;
+                color = (hitInfo.side == HORIZONTAL)? eadk_color_red : eadk_color_red - (5 << 11);
                 break;
         }
 
