@@ -48,7 +48,7 @@ void raycast_render(Vec2 pos, Maze *maze, float player_angle) {
         Vec2 dir = (Vec2) { cosf(angle), sinf(angle) };
         float distance = raycast_for_distance(pos, dir, maze) * cosf(player_angle - angle);
 
-        uint16_t wall_height = (uint16_t)(250.0 / distance);
+        uint16_t wall_height = (uint16_t)(200.0 / distance);
 
         if (wall_height >= EADK_SCREEN_HEIGHT) {
             wall_height = EADK_SCREEN_HEIGHT;
