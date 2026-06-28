@@ -34,6 +34,12 @@ int main(void) {
         
 
         angle += PI * (eadk_keyboard_key_down(keyboad, eadk_key_right) - eadk_keyboard_key_down(keyboad, eadk_key_left)) * dt;
+        if (angle > 2 * PI) {
+            angle = 0;
+        }
+        if (angle < 0) {
+            angle = 2 * PI;
+        }
         float movement = (eadk_keyboard_key_down(keyboad, eadk_key_up) - eadk_keyboard_key_down(keyboad, eadk_key_down)) * dt;
 
         pos = vec_add(pos, vec_scale(movement, (Vec2){cosf(angle), sinf(angle)}));
