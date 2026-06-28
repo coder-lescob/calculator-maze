@@ -47,7 +47,7 @@ int main(void) {
         raycast_render(pos, &maze, angle);
         
         char msg[50] = {0};
-        snprintf(msg, 49, "%f %f angle: %f", pos.x, pos.y, angle);
+        snprintf(msg, 49, "FPS: %.0f", (dt > 0)? 1 / dt : 100000.0f);
         eadk_display_draw_string(msg, (eadk_point_t) { 0, 0 }, false, eadk_color_white, eadk_color_black);
 
         eadk_display_wait_for_vblank();
