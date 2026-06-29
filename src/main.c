@@ -52,4 +52,6 @@ int main(void) {
         dt = (eadk_timing_millis() - last_time) / 1000.0f;
         last_time = eadk_timing_millis();
     }
+
+    free(maze.tiles);
 }

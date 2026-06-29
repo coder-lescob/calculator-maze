@@ -1,6 +1,5 @@
 #include "raycaster.h"
 #include "maze.h"
-#include "assert.h"
 #include "math.h"
 
 #include <stdio.h>
