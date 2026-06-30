@@ -22,11 +22,6 @@ typedef struct {
 } HitInfo;
 
 /**
- * get the tile index of the position pos in maze.
- */
-uint16_t get_tile_idx(Vec2 pos, Maze *maze);
-
-/**
  * shoots a single ray to figure out what is in this direction.
  */
 HitInfo raycast_single_ray(Ray ray, Maze *maze);

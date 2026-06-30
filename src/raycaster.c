@@ -1,6 +1,5 @@
 #include "raycaster.h"
 #include "maze.h"
-#include "assert.h"
 #include "math.h"
 
 #include <stdio.h>
@@ -8,75 +7,67 @@
 // Yes I actually know that much
 #define PI 3.141592653589793f
 
-inline uint16_t get_tile_idx(Vec2 pos, Maze *maze) {
-    assert(pos.x >= 0 && pos.x < maze->width);
-    assert(pos.y >= 0 && pos.y < maze->height);
-    return (uint16_t)pos.x + (uint16_t)pos.y * maze->height;
-}
-
 HitInfo raycast_single_ray(Ray ray, Maze *maze) {
+    // thank to https://lodev.org/cgtutor/raycasting.html
+    // for the algorithm
+    
     #define FLOOR_u16(F) (uint16_t)F
     eadk_point_t map_pos = { FLOOR_u16(ray.origine.x), FLOOR_u16(ray.origine.y) };
 
     int8_t step_x, step_y;
     float side_distance_x, side_distance_y;
 
-    if (ray.direction.x < 0) {
-
-        // ray.direction.x < 0 so |ray.direction.x| = -ray.direction.x
-        step_x = -1;
-        side_distance_x = -(ray.origine.x - map_pos.x) / ray.direction.x;
-    }
-    else if (ray.direction.x == 0) {
+    if (ray.direction.x == 0) {
         step_x = 0;
         side_distance_x = INFINITY;
     }
     else {
-        step_x = 1;
-        side_distance_x = (map_pos.x + 1 - ray.origine.x) / ray.direction.x;
+        // ray.direction.x < 0 so |ray.direction.x| = -ray.direction.x
+        // else |ray.direction.x| = ray.direction.x
+
+        // the equations are thus
+        // (ray.origine.x - map_pos.x) / -ray.direction.x <=> (map_pos.x - ray.origine.x) / ray.direction.x, ray.direction.x < 0
+        // (map_pos.x + 1 - ray.origine.x) / ray.direction.x, ray.direction.x > 0
+        // And we know that the expression ray.direction.x > 0 will evaluate to 1 if and only if ray.direction.x > 0
+        // so the final expression ends up being what is below
+
+        uint8_t dir_positive = ray.direction.x > 0;
+        step_x = dir_positive? 1 : -1;
+        side_distance_x = (map_pos.x - ray.origine.x + (float)dir_positive) / ray.direction.x;
     }
 
-
-    if (ray.direction.y < 0) {
-
-        // ray.direction.y < 0 so |ray.direction.y| = -ray.direction.y
-        step_y = -1;
-        side_distance_y = -(ray.origine.y - map_pos.y) / ray.direction.y;
-    }
-    else if (ray.direction.y == 0) {
+    if (ray.direction.y == 0) {
         step_y = 0;
         side_distance_y = INFINITY;
     }
     else {
-        step_y = 1;
-        side_distance_y = (map_pos.y + 1 - ray.origine.y) / ray.direction.y;
+        // ray.direction.y < 0 so |ray.direction.y| = -ray.direction.y
+        // else |ray.direction.y| = ray.direction.y
+
+        // the equations are thus
+        // (ray.origine.y - map_pos.y) / -ray.direction.y <=> (map_pos.y - ray.origine.y) / ray.direction.y, ray.direction.y < 0
+        // (map_pos.y + 1 - ray.origine.y) / ray.direction.y, ray.direction.y > 0
+        // And we know that the eypression ray.direction.y > 0 will evaluate to 1 if and only if ray.direction.y > 0
+        // so the final eypression ends up being what is below
+
+        uint8_t dir_positive = ray.direction.y > 0;
+        step_y = dir_positive? 1 : -1;
+        side_distance_y = (map_pos.y - ray.origine.y + (float)dir_positive) / ray.direction.y;
     }
 
-
-    float delta_distance_x, delta_distance_y;
-
-    // int comparaison are faster
-    if (step_x == 0) {
-        delta_distance_x = INFINITY;
-    }
-    else {
-        // if dir.x < 0 then step_x == -1 so step_x * ray.direction.x = |ray.direction.x|
-        delta_distance_x = 1 / (step_x * ray.direction.x);
-    }
-
-    // int comparaison are faster
-    if (step_y == 0) {
-        delta_distance_y = INFINITY;
-    }
-    else {
-        // if dir.y < 0 then step_y == -1 so step_y * ray.direction.y = |ray.direction.y|
-        delta_distance_y = 1 / (step_y * ray.direction.y);
-    }
+    // if dir.x < 0 then step_x == -1 so step_x * ray.direction.x = |ray.direction.x|
+    // the same logic applies for y
+    float delta_distance_x = (step_x == 0)? INFINITY : 1 / (step_x * ray.direction.x);
+    float delta_distance_y = (step_y == 0)? INFINITY : 1 / (step_y * ray.direction.y);
 
     float distance = 0.0f;
     Side hit_side  = UNDEFINED_SIDE;
     uint16_t tile_idx;
 
+    // does not look like but is a really fast loop
+    // not float operation other than addition
+    // and a really fast algorithm
+    
     while (true) {
         if (side_distance_x < side_distance_y) {
             distance         = side_distance_x;
@@ -95,7 +86,7 @@ HitInfo raycast_single_ray(Ray ray, Maze *maze) {
             return (HitInfo) {
                 .distance = distance,
                 .block_type = 0,
-                .side = UNDEFINED_SIDE,
+                .side = hit_side,
             };
         }
 
@@ -118,17 +109,18 @@ HitInfo raycast_single_ray(Ray ray, Maze *maze) {
 
 void raycast_render(Vec2 pos, Maze *maze, float player_angle) {
     size_t res = 1;
+    float field_of_view = PI / 3;
 
     for (int i = 0; i <= EADK_SCREEN_WIDTH / res; i++) {
         float t = (float)i / EADK_SCREEN_WIDTH * res;
-        float angle = (player_angle - PI / 4) + t * (PI / 2);
+        float angle = (player_angle - field_of_view * 0.5f) + t * (field_of_view);
 
         // garentee to have length 1 then apply correction on distance to avoid fish eye len effect
         Vec2 dir = (Vec2) { cosf(angle), sinf(angle) };
         HitInfo hitInfo = raycast_single_ray((Ray) { pos, dir }, maze);
         float distance = hitInfo.distance * cosf(player_angle - angle);
 
-        uint16_t wall_height = (uint16_t)(200.0 / distance);
+        uint16_t wall_height = (uint16_t)(300.0 / distance);
 
         if (wall_height >= EADK_SCREEN_HEIGHT) {
             wall_height = EADK_SCREEN_HEIGHT;
@@ -137,11 +129,11 @@ void raycast_render(Vec2 pos, Maze *maze, float player_angle) {
         eadk_color_t color;
         switch (hitInfo.block_type) {
             case 1:
-                color = (hitInfo.side == HORIZONTAL)? eadk_color_blue : eadk_color_green;
+                color = (hitInfo.side == HORIZONTAL)? eadk_color_blue : eadk_color_blue - 5;
                 break;
             
             default:
-                color = eadk_color_red;
+                color = (hitInfo.side == HORIZONTAL)? eadk_color_red : eadk_color_red - (5 << 11);
                 break;
         }
 

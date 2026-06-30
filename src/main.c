@@ -30,9 +30,6 @@ int main(void) {
             break;
         }
 
-        //eadk_display_push_rect_uniform(eadk_screen_rect, eadk_color_black);
-        
-
         angle += PI * (eadk_keyboard_key_down(keyboad, eadk_key_right) - eadk_keyboard_key_down(keyboad, eadk_key_left)) * dt;
         if (angle > 2 * PI) {
             angle = 0;
@@ -47,7 +44,7 @@ int main(void) {
         raycast_render(pos, &maze, angle);
         
         char msg[50] = {0};
-        snprintf(msg, 49, "FPS: %.0f", (dt > 0)? 1 / dt : 100000.0f);
+        snprintf(msg, 49, "FPS: %d", (uint16_t)((dt > 0)? 1 / dt : 100000.0f));
         eadk_display_draw_string(msg, (eadk_point_t) { 0, 0 }, false, eadk_color_white, eadk_color_black);
 
         eadk_display_wait_for_vblank();
@@ -55,4 +52,6 @@ int main(void) {
         dt = (eadk_timing_millis() - last_time) / 1000.0f;
         last_time = eadk_timing_millis();
     }
+
+    free(maze.tiles);
 }
