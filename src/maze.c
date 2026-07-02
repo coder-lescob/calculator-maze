@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <stdint.h>
 
 int maze[100];      // 0 = mur, 1 = chemin, 2 chemin(backtracking)
 
@@ -23,18 +24,18 @@ int cell_available(int cell)
 
     int count = 0;
     if (0 <= cell-10 && maze[cell-10] != 0)       // ← nord
-        count += 1;
+        count ++;
     if (cell % 10 != 9 && maze[cell+1] != 0)      // ← est
-        count += 1;
+        count ++;
     if (cell+10 <= 99 && maze[cell+10] != 0)      // ← sud
-        count += 1;
+        count ++;
     if (cell % 10 != 0 && maze[cell-1] != 0)      // ← ouest
-        count += 1;
+        count ++;
 
     return (count == 1) ? 1 : 0;
 }
 
-int get_nex_cell(int cell)
+int get_next_cell(int cell)
 {
     int count = 0;
     int available[4];
@@ -42,22 +43,22 @@ int get_nex_cell(int cell)
     if (0 <= cell-10 && cell_available(cell-10))  // ← nord
     {
         available[count] = cell-10;
-        count += 1;
+        count ++;
     }
     if (cell % 10 != 9 && cell_available(cell+1)) // ← est
     {
         available[count] = cell+1;
-        count += 1;
+        count ++;
     }
     if (cell+10 <= 99 && cell_available(cell+10)) // ← sud
     {
         available[count] = cell+10;
-        count += 1;
+        count ++;
     }
     if (cell % 10 != 0 && cell_available(cell-1)) // ← ouest
     {
         available[count] = cell-1;
-        count += 1;
+        count ++;
     }
 
     if (count >= 1)
@@ -93,7 +94,7 @@ int get_nex_cell(int cell)
     }
 }
 
-int main(void)
+int generate_maze(uint16_t width, uint16_t height)
 {
     srand(time(NULL));
     for (int i = 0; i < 100; i++)
@@ -104,7 +105,7 @@ int main(void)
 
     do
     {
-        current_cell = get_nex_cell(current_cell);
+        current_cell = get_next_cell(current_cell);
         // print_maze();
     } while (current_cell != 0);
 
