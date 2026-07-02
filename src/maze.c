@@ -1,114 +1,149 @@
+#include "maze.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 #include <stdint.h>
 
-int maze[100];      // 0 = mur, 1 = chemin, 2 chemin(backtracking)
+#define WALL (1)
+#define AIR  (0)
+#define BACKTRACKING (0xFF)
 
-void print_maze(void)
+bool cell_visited(Maze maze, int cell) {
+    return maze.tiles[cell] != WALL;
+}
+
+bool cell_available(Maze maze, int cell)
 {
-    for (int i = 0; i < 10; i++)
+    // cell already visited (air or backtracking trace there)
+    if ((cell < 0 && cell >= maze.width * maze.height) || cell_visited(maze, cell)) return false;
+
+    uint8_t count = 0;
+    if (cell - maze.width >= 0                       && cell_visited(maze, cell - maze.width)) count ++;
+    if (cell +     1      < maze.width * maze.height && cell_visited(maze, cell + 1         )) count ++;
+    if (cell + maze.width < maze.width * maze.height && cell_visited(maze, cell + maze.width)) count ++;
+    if (cell - 1          >= 0                       && cell_visited(maze, cell - 1))          count ++;
+
+    return count == 1;
+}
+
+/**
+ * available MUST have a length of 4
+ */
+int get_available_cells(Maze maze, int current_cell, int available[4]) {
+    
+    int count = 0;
+
+    if (cell_available(maze, current_cell - maze.width))  
     {
-        for (int j = 0; j < 10; j++)
-        {
-            printf("%d ", maze[i*10 + j]);
-        }
-        printf("\n");
+        available[count] = current_cell - maze.width;
+        count ++;
     }
-    printf("\n");
+    if (cell_available(maze, current_cell + 1))
+    {
+        available[count] = current_cell + 1;
+        count ++;
+    }
+    if (cell_available(maze, current_cell + maze.width))
+    {
+        available[count] = current_cell + maze.width;
+        count ++;
+    }
+    if (cell_available(maze, current_cell-1))
+    {
+        available[count] = current_cell-1;
+        count ++;
+    }
+
+    return count;
 }
 
-int cell_available(int cell)
+int get_next_cell(Maze maze, int cell)
 {
-    if (maze[cell] != 0) return 0;  // ← déjà visitée, pas disponible
-
-    int count = 0;
-    if (0 <= cell-10 && maze[cell-10] != 0)       // ← nord
-        count ++;
-    if (cell % 10 != 9 && maze[cell+1] != 0)      // ← est
-        count ++;
-    if (cell+10 <= 99 && maze[cell+10] != 0)      // ← sud
-        count ++;
-    if (cell % 10 != 0 && maze[cell-1] != 0)      // ← ouest
-        count ++;
-
-    return (count == 1) ? 1 : 0;
-}
-
-int get_next_cell(int cell)
-{
-    int count = 0;
     int available[4];
+    int num_available = get_available_cells(maze, cell, available);
 
-    if (0 <= cell-10 && cell_available(cell-10))  // ← nord
+    if (num_available >= 1)
     {
-        available[count] = cell-10;
-        count ++;
-    }
-    if (cell % 10 != 9 && cell_available(cell+1)) // ← est
-    {
-        available[count] = cell+1;
-        count ++;
-    }
-    if (cell+10 <= 99 && cell_available(cell+10)) // ← sud
-    {
-        available[count] = cell+10;
-        count ++;
-    }
-    if (cell % 10 != 0 && cell_available(cell-1)) // ← ouest
-    {
-        available[count] = cell-1;
-        count ++;
-    }
+        int random_cell = eadk_random() % num_available;
 
-    if (count >= 1)
-    {
-        int rng = rand() % count;
-        maze[cell] = 1;
-        int next = available[rng];
-        maze[next] = 1;  // ← marquer la destination
+        maze.tiles[cell] = BACKTRACKING;
+        int next = available[random_cell];
+        maze.tiles[next] = BACKTRACKING;
+
         return next;
     }
-    else
+
+    // backtraces to before because no next cells are available
+
+    if (0 <= cell - maze.width && maze.tiles[cell - maze.width] == BACKTRACKING)
     {
-        if (0 <= cell-10 && maze[cell-10] == 1)       // ← nord
-        {
-            maze[cell] = 2;
-            return cell-10;
-        }else if (cell % 10 != 9 && maze[cell+1] == 1)      // ← est
-        {
-            maze[cell] = 2;
-            return cell+1;
-        }else if (cell+10 <= 99 && maze[cell+10] == 1)      // ← sud
-        {
-            maze[cell] = 2;
-            return cell+10;
-        }else if (cell % 10 != 0 && maze[cell-1] == 1)      // ← ouest
-        {
-            maze[cell] = 2;
-            return cell-1;
-        }else
-        {
-            return 0;
-        }
+        maze.tiles[cell] = AIR;
+        return cell - maze.width;
     }
+    if (cell < maze.width * maze.height && maze.tiles[cell + 1] == BACKTRACKING)
+    {
+        maze.tiles[cell] = AIR;
+        return cell + 1;
+    }
+    if (cell + maze.width < maze.width * maze.height && maze.tiles[cell + maze.width] == BACKTRACKING)
+    {
+        maze.tiles[cell] = AIR;
+        return cell + maze.width;
+    }
+    if (cell - 1 >= 0 && maze.tiles[cell - 1] == BACKTRACKING)
+    {
+        maze.tiles[cell] = AIR;
+        return cell - 1;
+    }
+    
+    return 0;
 }
 
-int generate_maze(uint16_t width, uint16_t height)
+Maze generate_maze(uint16_t width, uint16_t height)
 {
-    srand(time(NULL));
-    for (int i = 0; i < 100; i++)
-        maze[i] = 0;
+    Maze maze = { .width = width, .height = height, .tiles = calloc(sizeof(uint8_t), width * height)};
+
+    for (int i = 0; i < maze.width * maze.height; i++)
+        maze.tiles[i] = WALL;
 
     int current_cell = 0;
-    maze[current_cell] = 1;
+    maze.tiles[current_cell] = BACKTRACKING;
 
     do
     {
-        current_cell = get_next_cell(current_cell);
-        // print_maze();
-    } while (current_cell != 0);
+        current_cell = get_next_cell(maze, current_cell);
+    } 
+    while (current_cell != 0);
 
-    print_maze();
-    return 0;
+    for (int i = 0; i < maze.width * maze.height; i++) {
+        if (maze.tiles[i] == BACKTRACKING) {
+            maze.tiles[i] = AIR;
+        }
+    }
+
+    print_maze(&maze);
+
+    return maze;
+}
+
+void free_maze(Maze *maze) {
+    if (maze == NULL) return;
+
+    free(maze->tiles);
+}
+
+void print_maze(Maze *maze) {
+    for (int y = 0; y < maze->height; y++) {
+        for (int x = 0; x < maze->width; x++) {
+            if (maze->tiles[x + y * maze->width] > 0) {
+                printf("#");
+            }
+            else {
+                printf(" ");
+            }
+        }
+        printf("\n");
+    }
+    
 }
