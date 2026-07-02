@@ -6,8 +6,8 @@
 #include <stdint.h>
 
 #define WALL (1)
-#define AIR  (0)
-#define BACKTRACKING (0xFF)
+#define AIR  (0xff)
+#define BACKTRACKING (0)
 
 bool cell_visited(Maze maze, int cell) {
     return maze.tiles[cell] != WALL;
@@ -19,10 +19,10 @@ bool cell_available(Maze maze, int cell)
     if (cell_visited(maze, cell)) return false;
 
     uint8_t count = 0;
-    if (cell - maze.width >= 0                    && cell_visited(maze, cell - maze.width)) count ++;
+    if ((cell - maze.width) % maze.width != 0     && cell_visited(maze, cell - maze.width)) count ++;
     if ((cell + 1) % maze.width < maze.width - 1  && cell_visited(maze, cell + 1         )) count ++;
     if (cell % maze.width < maze.width  - 1       && cell_visited(maze, cell + maze.width)) count ++;
-    if (cell - 1          >= 0                    && cell_visited(maze, cell - 1         )) count ++;
+    if ((cell - 1) % maze.width != 0              && cell_visited(maze, cell - 1         )) count ++;
 
     return count == 1;
 }
@@ -34,7 +34,7 @@ int get_available_cells(Maze maze, int current_cell, int *available) {
     
     int count = 0;
 
-    if (current_cell - maze.width >= 0 && cell_available(maze, current_cell - maze.width))  
+    if ((current_cell - maze.width) % maze.width != 0 && cell_available(maze, current_cell - maze.width))  
     {
         available[count] = current_cell - maze.width;
         count ++;
@@ -44,12 +44,12 @@ int get_available_cells(Maze maze, int current_cell, int *available) {
         available[count] = current_cell + 1;
         count ++;
     }
-    if (current_cell % maze.width < maze.width  - 1 && cell_available(maze, current_cell + maze.width))
+    if (current_cell % maze.width < maze.width - 1 && cell_available(maze, current_cell + maze.width))
     {
         available[count] = current_cell + maze.width;
         count ++;
     }
-    if (current_cell - 1 >= 0 && cell_available(maze, current_cell - 1))
+    if ((current_cell - 1) % maze.width != 0 && cell_available(maze, current_cell - 1))
     {
         available[count] = current_cell - 1;
         count ++;
@@ -76,7 +76,7 @@ int get_next_cell(Maze maze, int cell)
 
     // backtraces to before because no next cells are available
 
-    if (0 <= cell - maze.width && maze.tiles[cell - maze.width] == AIR)
+    if (0 <= (cell - maze.width) % maze.width && maze.tiles[cell - maze.width] == AIR)
     {
         maze.tiles[cell] = BACKTRACKING;
         return cell - maze.width;
@@ -91,7 +91,7 @@ int get_next_cell(Maze maze, int cell)
         maze.tiles[cell] = BACKTRACKING;
         return cell + maze.width;
     }
-    if (cell - 1 >= 0 && maze.tiles[cell - 1] == AIR)
+    if ((cell - 1) % maze.width != 0 && maze.tiles[cell - 1] == AIR)
     {
         maze.tiles[cell] = BACKTRACKING;
         return cell - 1;
@@ -130,7 +130,7 @@ void free_maze(Maze *maze) {
 void print_maze(Maze *maze) {
     for (int y = 0; y < maze->height; y++) {
         for (int x = 0; x < maze->width; x++) {
-            if (maze->tiles[x + y * maze->width] > 0) {
+            if (maze->tiles[x + y * maze->width] == WALL) {
                 printf("#");
             }
             else {
@@ -139,5 +139,5 @@ void print_maze(Maze *maze) {
         }
         printf("\n");
     }
-    
+    printf("\n");
 }
