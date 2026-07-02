@@ -19,10 +19,10 @@ bool cell_available(Maze maze, int cell)
     if ((cell < 0 && cell >= maze.width * maze.height) || cell_visited(maze, cell)) return false;
 
     uint8_t count = 0;
-    if (cell - maze.width >= 0                       && cell_visited(maze, cell - maze.width)) count ++;
-    if ((cell + 1) % maze.width < maze.width - 1     && cell_visited(maze, cell + 1         )) count ++;
-    if (cell% maze.width < maze.width  - 1           && cell_visited(maze, cell + maze.width)) count ++;
-    if (cell - 1          >= 0                       && cell_visited(maze, cell - 1))          count ++;
+    if (cell - maze.width >= 0                    && cell_visited(maze, cell - maze.width)) count ++;
+    if ((cell + 1) % maze.width < maze.width - 1  && cell_visited(maze, cell + 1         )) count ++;
+    if (cell % maze.width < maze.width  - 1       && cell_visited(maze, cell + maze.width)) count ++;
+    if (cell - 1          >= 0                    && cell_visited(maze, cell - 1))          count ++;
 
     return count == 1;
 }
@@ -121,6 +121,8 @@ Maze generate_maze(uint16_t width, uint16_t height)
             maze.tiles[i] = AIR;
         }
     }
+
+    print_maze(&maze);
 
     return maze;
 }
