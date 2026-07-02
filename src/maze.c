@@ -116,12 +116,6 @@ Maze generate_maze(uint16_t width, uint16_t height)
     } 
     while (current_cell != 0);
 
-    for (int i = 0; i < maze.width * maze.height; i++) {
-        if (maze.tiles[i] == BACKTRACKING) {
-            maze.tiles[i] = AIR;
-        }
-    }
-
     print_maze(&maze);
 
     return maze;
