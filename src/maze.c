@@ -19,10 +19,10 @@ bool cell_available(Maze maze, int cell)
     if (cell_visited(maze, cell)) return false;
 
     uint8_t count = 0;
-    if ((cell - maze.width) % maze.width != 0     && cell_visited(maze, cell - maze.width)) count ++;
-    if ((cell + 1) % maze.width < maze.width - 1  && cell_visited(maze, cell + 1         )) count ++;
-    if (cell % maze.width < maze.width  - 1       && cell_visited(maze, cell + maze.width)) count ++;
-    if ((cell - 1) % maze.width != 0              && cell_visited(maze, cell - 1         )) count ++;
+    if ((cell - maze.width) >= 0            && cell_visited(maze, cell - maze.width)) count ++;
+    if (cell % maze.width != maze.width - 1 && cell_visited(maze, cell + 1         )) count ++;
+    if (cell < maze.width * maze.height     && cell_visited(maze, cell + maze.width)) count ++;
+    if (cell % maze.width != 0              && cell_visited(maze, cell - 1         )) count ++;
 
     return count == 1;
 }
@@ -34,22 +34,22 @@ int get_available_cells(Maze maze, int current_cell, int *available) {
     
     int count = 0;
 
-    if ((current_cell - maze.width) % maze.width != 0 && cell_available(maze, current_cell - maze.width))  
+    if ((current_cell - maze.width) >= 0 && cell_available(maze, current_cell - maze.width))  
     {
         available[count] = current_cell - maze.width;
         count ++;
     }
-    if ((current_cell + 1) % maze.width < maze.width - 1 && cell_available(maze, current_cell + 1))
+    if (current_cell % maze.width != maze.width - 1 && cell_available(maze, current_cell + 1))
     {
         available[count] = current_cell + 1;
         count ++;
     }
-    if (current_cell % maze.width < maze.width - 1 && cell_available(maze, current_cell + maze.width))
+    if (current_cell < maze.width * maze.height && cell_available(maze, current_cell + maze.width))
     {
         available[count] = current_cell + maze.width;
         count ++;
     }
-    if ((current_cell - 1) % maze.width != 0 && cell_available(maze, current_cell - 1))
+    if (current_cell % maze.width != 0 && cell_available(maze, current_cell - 1))
     {
         available[count] = current_cell - 1;
         count ++;
@@ -75,23 +75,24 @@ int get_next_cell(Maze maze, int cell)
     }
 
     // backtraces to before because no next cells are available
+    // mark as no go anready full pathes
 
-    if (0 <= (cell - maze.width) % maze.width && maze.tiles[cell - maze.width] == AIR)
+    if (0 <= (cell - maze.width)  && maze.tiles[cell - maze.width] == AIR)
     {
         maze.tiles[cell] = BACKTRACKING;
         return cell - maze.width;
     }
-    if ((cell + 1) % maze.width < maze.width - 1 && maze.tiles[cell + 1] == AIR)
+    if (cell % maze.width < maze.width - 1 && maze.tiles[cell + 1] == AIR)
     {
         maze.tiles[cell] = BACKTRACKING;
         return cell + 1;
     }
-    if (cell % maze.width < maze.width - 1 && maze.tiles[cell + maze.width] == AIR)
+    if (cell + 10 < maze.width * maze.height && maze.tiles[cell + maze.width] == AIR)
     {
         maze.tiles[cell] = BACKTRACKING;
         return cell + maze.width;
     }
-    if ((cell - 1) % maze.width != 0 && maze.tiles[cell - 1] == AIR)
+    if (cell % maze.width != 0 && maze.tiles[cell - 1] == AIR)
     {
         maze.tiles[cell] = BACKTRACKING;
         return cell - 1;
@@ -115,8 +116,6 @@ Maze generate_maze(uint16_t width, uint16_t height)
         current_cell = get_next_cell(maze, current_cell);
     } 
     while (current_cell != 0);
-
-    print_maze(&maze);
 
     return maze;
 }
