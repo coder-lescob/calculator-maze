@@ -5,9 +5,9 @@
 #include <time.h>
 #include <stdint.h>
 
-#define WALL (1)
-#define AIR  (0xff)
-#define BACKTRACKING (0)
+#define WALL            (0x01)
+#define PATH_IN_SEARCH  (0xff)
+#define PATH_DONE       (0x00)
 
 bool cell_visited(Maze maze, int cell) {
     return maze.tiles[cell] != WALL;
@@ -67,9 +67,9 @@ int get_next_cell(Maze maze, int cell)
     {
         int random_cell = eadk_random() % num_available;
 
-        maze.tiles[cell] = AIR;
+        maze.tiles[cell] = PATH_IN_SEARCH;
         int next = available[random_cell];
-        maze.tiles[next] = AIR;
+        maze.tiles[next] = PATH_IN_SEARCH;
 
         return next;
     }
@@ -77,24 +77,24 @@ int get_next_cell(Maze maze, int cell)
     // backtraces to before because no next cells are available
     // mark as no go anready full pathes
 
-    if (0 <= (cell - maze.width)  && maze.tiles[cell - maze.width] == AIR)
+    if (0 <= (cell - maze.width)  && maze.tiles[cell - maze.width] == PATH_IN_SEARCH)
     {
-        maze.tiles[cell] = BACKTRACKING;
+        maze.tiles[cell] = PATH_DONE;
         return cell - maze.width;
     }
-    if (cell % maze.width < maze.width - 1 && maze.tiles[cell + 1] == AIR)
+    if (cell % maze.width < maze.width - 1 && maze.tiles[cell + 1] == PATH_IN_SEARCH)
     {
-        maze.tiles[cell] = BACKTRACKING;
+        maze.tiles[cell] = PATH_DONE;
         return cell + 1;
     }
-    if (cell + 10 < maze.width * maze.height && maze.tiles[cell + maze.width] == AIR)
+    if (cell + 10 < maze.width * maze.height && maze.tiles[cell + maze.width] == PATH_IN_SEARCH)
     {
-        maze.tiles[cell] = BACKTRACKING;
+        maze.tiles[cell] = PATH_DONE;
         return cell + maze.width;
     }
-    if (cell % maze.width != 0 && maze.tiles[cell - 1] == AIR)
+    if (cell % maze.width != 0 && maze.tiles[cell - 1] == PATH_IN_SEARCH)
     {
-        maze.tiles[cell] = BACKTRACKING;
+        maze.tiles[cell] = PATH_DONE;
         return cell - 1;
     }
     
@@ -109,7 +109,7 @@ Maze generate_maze(uint16_t width, uint16_t height)
         maze.tiles[i] = WALL;
 
     int current_cell = 0;
-    maze.tiles[current_cell] = AIR;
+    maze.tiles[current_cell] = PATH_IN_SEARCH;
 
     do
     {
