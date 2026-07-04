@@ -5,12 +5,9 @@
 #include "vec.h"
 #include "raycaster.h"
 #include "maze.h"
+#include "player.h"
 
 #define VERSION ("0.2.0")
-
-
-// Yes I actually know that much
-#define PI 3.141592653589793f
 
 const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = "Maze";
 const uint32_t eadk_api_level  __attribute__((section(".rodata.eadk_api_level"))) = 0;
@@ -18,42 +15,38 @@ const uint32_t eadk_api_level  __attribute__((section(".rodata.eadk_api_level"))
 int main(void) {
     Maze maze = generate_maze(20, 20);
     maze.tiles[3] = 1;
-    Vec2 pos = {0.5, 0.5};
+    
+    Player player = { .pos = (Vec2) { 0.5f, 0.5f }, .angle = 0 };
 
     uint64_t last_time = eadk_timing_millis();
     float dt = 0;
 
-    float angle = 0;
-
     while (true) {
-        eadk_keyboard_state_t keyboad = eadk_keyboard_scan();
+        eadk_keyboard_state_t keyboard = eadk_keyboard_scan();
 
-        if (eadk_keyboard_key_down(keyboad, eadk_key_back)) {
+        if (eadk_keyboard_key_down(keyboard, eadk_key_back)) {
             break;
         }
 
-        angle += PI * (eadk_keyboard_key_down(keyboad, eadk_key_right) - eadk_keyboard_key_down(keyboad, eadk_key_left)) * dt;
-        if (angle > 2 * PI) {
-            angle = 0;
-        }
-        if (angle < 0) {
-            angle = 2 * PI;
-        }
-        float movement = (eadk_keyboard_key_down(keyboad, eadk_key_up) - eadk_keyboard_key_down(keyboad, eadk_key_down)) * dt;
+        // move the player
+        player_move(&player, keyboard, dt);
 
-        pos = vec_add(pos, vec_scale(movement, (Vec2){cosf(angle), sinf(angle)}));
-
-        raycast_render(pos, &maze, angle);
+        // render the terain
+        raycast_render(player.pos, &maze, player.angle);
         
+        // render fps
         char msg[50] = {0};
         snprintf(msg, 49, "FPS: %d", (uint16_t)((dt > 0)? 1 / dt : 100000.0f));
         eadk_display_draw_string(msg, (eadk_point_t) { 0, 0 }, false, eadk_color_white, eadk_color_black);
 
+        // make display way less buggy on the calculator
         eadk_display_wait_for_vblank();
 
+        // compute delta time
         dt = (eadk_timing_millis() - last_time) / 1000.0f;
         last_time = eadk_timing_millis();
     }
 
+    // free the maze
     free_maze(&maze);
 }
