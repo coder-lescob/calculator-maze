@@ -6,6 +6,8 @@
 #include "raycaster.h"
 #include "maze.h"
 
+#define VERSION ("0.2.0")
+
 
 // Yes I actually know that much
 #define PI 3.141592653589793f
