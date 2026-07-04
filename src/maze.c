@@ -117,6 +117,8 @@ Maze generate_maze(uint16_t width, uint16_t height)
     } 
     while (current_cell != 0);
 
+    print_maze(&maze);
+
     return maze;
 }
 
@@ -130,13 +132,13 @@ void print_maze(Maze *maze) {
     for (int y = 0; y < maze->height; y++) {
         for (int x = 0; x < maze->width; x++) {
             if (maze->tiles[x + y * maze->width] == WALL) {
-                printf("#");
+                printf("\x1b[1;47m  ");
             }
             else {
-                printf(" ");
+                printf("\x1b[1;40m  ");
             }
         }
-        printf("\n");
+        printf("\x1b[0m\n");
     }
     printf("\n");
 }
