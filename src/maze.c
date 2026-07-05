@@ -117,9 +117,8 @@ Maze generate_maze(uint16_t width, uint16_t height)
     } 
     while (current_cell != 0);
 
-    // remove any none wall with PATH_DONE
-    for (int i = 0; i < maze.width * maze.height; i++)
-        if (maze.tiles[i] != WALL) maze.tiles[i] = PATH_DONE;
+    // Path done on square 0
+    maze.tiles[0] = PATH_DONE;
 
     print_maze(&maze);
 
