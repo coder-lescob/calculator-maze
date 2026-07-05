@@ -120,7 +120,7 @@ Maze generate_maze(uint16_t width, uint16_t height)
     // Path done on square 0
     maze.tiles[0] = PATH_DONE;
 
-    print_maze(&maze);
+    // print_maze(&maze);
 
     return maze;
 }
