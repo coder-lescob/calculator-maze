@@ -29,7 +29,7 @@ int main(void) {
         }
 
         // move the player
-        player_move(&player, keyboard, dt);
+        player_move(&player, keyboard, dt, &maze);
 
         // render the terain
         raycast_render(player.pos, &maze, player.angle);
