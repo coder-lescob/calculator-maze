@@ -119,7 +119,7 @@ Maze generate_maze(uint16_t width, uint16_t height)
 
     // remove any none wall with PATH_DONE
     for (int i = 0; i < maze.width * maze.height; i++)
-        if (maze.tiles[i] != WALL) maze.tiles[i] = PATH_DONE;
+        if (maze.tiles[i] == PATH_IN_SEARCH) maze.tiles[i] = PATH_DONE;
 
     print_maze(&maze);
 
