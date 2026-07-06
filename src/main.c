@@ -14,7 +14,6 @@ const uint32_t eadk_api_level  __attribute__((section(".rodata.eadk_api_level"))
 
 int main(void) {
     Maze maze = generate_maze(20, 20);
-    maze.tiles[3] = 1;
     
     Player player = { .pos = (Vec2) { 0.5f, 0.5f }, .angle = 0 };
 
