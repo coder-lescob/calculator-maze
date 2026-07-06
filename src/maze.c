@@ -75,7 +75,7 @@ int get_next_cell(Maze maze, int cell)
     }
 
     // backtraces to before because no next cells are available
-    // mark as no go already full pathes
+    // mark as no go dead ends
 
     if (0 <= (cell - maze.width)  && maze.tiles[cell - maze.width] == PATH_IN_SEARCH)
     {
