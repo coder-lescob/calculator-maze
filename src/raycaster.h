@@ -17,8 +17,10 @@ typedef uint8_t Side;
 
 typedef struct {
     float distance;
-    uint8_t block_type;
     Side side;
+
+    uint8_t block_type;
+    uint8_t  texture_x;
 } HitInfo;
 
 /**

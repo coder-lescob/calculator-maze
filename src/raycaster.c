@@ -1,6 +1,7 @@
 #include "raycaster.h"
 #include "maze.h"
 #include "math.h"
+#include "textures.h"
 
 #include <stdio.h>
 
@@ -60,51 +61,118 @@ HitInfo raycast_single_ray(Ray ray, Maze *maze) {
     float delta_distance_x = (step_x == 0)? INFINITY : 1 / (step_x * ray.direction.x);
     float delta_distance_y = (step_y == 0)? INFINITY : 1 / (step_y * ray.direction.y);
 
-    float distance = 0.0f;
     Side hit_side  = UNDEFINED_SIDE;
     uint16_t tile_idx;
 
     // does not look like but is a really fast loop
     // not float operation other than addition
     // and a really fast algorithm
+
+    uint16_t block_type = 0;
     
     while (true) {
         if (side_distance_x < side_distance_y) {
-            distance         = side_distance_x;
             side_distance_x += delta_distance_x;
             map_pos.x       += step_x;
             hit_side         = VERTICAL;
         }
         else {
-            distance         = side_distance_y;
             side_distance_y += delta_distance_y;
             map_pos.y       += step_y;
             hit_side         = HORIZONTAL;
         }
 
         if (map_pos.x >= maze->width || map_pos.y >= maze->height) {
-            return (HitInfo) {
-                .distance = distance,
-                .block_type = 0,
-                .side = hit_side,
-            };
+            break;
         }
 
         // compute the tile index
         tile_idx = map_pos.x + map_pos.y * maze->width;
 
         if (maze->tiles[tile_idx] > 0) {
+            block_type = maze->tiles[tile_idx];
             break;
         }
     }
 
-    uint16_t block_type = maze->tiles[tile_idx];
+    float distance;
+
+    // Calculate distance projected on camera direction (Euclidean distance would give fisheye effect!)
+    if(hit_side == 0) distance = (side_distance_x - delta_distance_x);
+    else              distance = (side_distance_y - delta_distance_y);
+
+    //calculate value of wallX
+    float wallX; //where exactly the wall was hit
+    if (hit_side == 0) wallX = ray.origine.y + distance * ray.direction.y;
+    else               wallX = ray.origine.x + distance * ray.direction.x;
+    wallX -= (int)wallX;
+
+    //x coordinate on the texture
+    int tex_x = (int)(wallX * (float)TEXTURE_WIDTH);
+    if(hit_side == 0 && ray.direction.x > 0) tex_x = TEXTURE_WIDTH - tex_x - 1;
+    if(hit_side == 1 && ray.direction.y < 0) tex_x = TEXTURE_WIDTH - tex_x - 1;
 
     return (HitInfo) {
-        .distance = distance, 
-        .block_type = block_type, 
-        .side = hit_side
+        .distance = distance,
+        .side = hit_side,
+        .block_type = block_type,
+        .texture_x = tex_x,
     };
+}
+
+static eadk_color_t *map_block_type_to_texture(uint8_t block_type) {
+    switch (block_type) {
+        case 0:
+            return textures + TEXTURE_SIZE * 5;
+
+        case 1:
+            return textures + TEXTURE_SIZE * 3;
+
+        default:
+            return textures + TEXTURE_SIZE * 3;
+    }
+}
+
+static void draw_vertical_texture_strip(uint16_t res, uint16_t x, uint16_t wall_height, HitInfo hitInfo) {
+    int16_t draw_y = (EADK_SCREEN_HEIGHT - wall_height) / 2;
+    if (draw_y < 0) draw_y = 0;
+
+    // compute the step of the texture y
+    float delta_texture_y = TEXTURE_HEIGHT / (float)wall_height;
+    float texture_y       = (draw_y - EADK_SCREEN_HEIGHT / 2 + wall_height / 2) * delta_texture_y;
+
+    if (wall_height + draw_y > EADK_SCREEN_HEIGHT) {
+        // we need that wall_height + draw_y = EADK_SCREEN_HEIGHT
+        wall_height = EADK_SCREEN_HEIGHT - draw_y;
+    }
+
+    eadk_color_t line_buffer[wall_height];
+    eadk_color_t *current_texture = map_block_type_to_texture(hitInfo.block_type);
+
+    for (uint16_t y = 0; y < wall_height; y++) {
+        // get the color from the texture
+        eadk_color_t color = current_texture[hitInfo.texture_x * TEXTURE_HEIGHT + (uint8_t)texture_y];
+
+        // darken the HORIZONTAL side
+        if (hitInfo.side == HORIZONTAL) color = (color >> 1) & 0xfbef;
+
+        // write the color
+        line_buffer[y] = color;
+
+        // increament the texture_y by it's delta
+        texture_y += delta_texture_y;
+    }
+
+    // draw it to the screen
+    eadk_display_push_rect(
+        (eadk_rect_t) {
+            .x = x,
+            .y = draw_y,
+            .width = res,
+            .height = wall_height,
+        },
+        line_buffer
+    );
 }
 
 void raycast_render(Vec2 pos, Maze *maze, float player_angle) {
@@ -118,34 +186,11 @@ void raycast_render(Vec2 pos, Maze *maze, float player_angle) {
         // garentee to have length 1 then apply correction on distance to avoid fish eye len effect
         Vec2 dir = (Vec2) { cosf(angle), sinf(angle) };
         HitInfo hitInfo = raycast_single_ray((Ray) { pos, dir }, maze);
-        float distance = hitInfo.distance * cosf(player_angle - angle);
+        float distance = hitInfo.distance;
 
-        uint16_t wall_height = (uint16_t)(300.0 / distance);
+        uint16_t wall_height = (uint16_t)(EADK_SCREEN_HEIGHT / distance);
 
-        if (wall_height >= EADK_SCREEN_HEIGHT) {
-            wall_height = EADK_SCREEN_HEIGHT;
-        }
-
-        eadk_color_t color;
-        switch (hitInfo.block_type) {
-            case 1:
-                color = (hitInfo.side == HORIZONTAL)? eadk_color_blue : eadk_color_blue - 5;
-                break;
-            
-            default:
-                color = (hitInfo.side == HORIZONTAL)? eadk_color_red : eadk_color_red - (5 << 11);
-                break;
-        }
-
-        eadk_display_push_rect_uniform(
-            (eadk_rect_t) { 
-                .x = res * i, 
-                .y = (EADK_SCREEN_HEIGHT - wall_height) / 2 , 
-                .width = res, 
-                .height = wall_height,
-            }, 
-            color
-        );
+        draw_vertical_texture_strip(res, res * i, wall_height, hitInfo);
 
         eadk_display_push_rect_uniform(
             (eadk_rect_t) {
@@ -160,7 +205,7 @@ void raycast_render(Vec2 pos, Maze *maze, float player_angle) {
         eadk_display_push_rect_uniform(
             (eadk_rect_t) {
                 .x = res * i,
-                .y = (EADK_SCREEN_HEIGHT - wall_height) / 2 + wall_height,
+                .y = (EADK_SCREEN_HEIGHT + wall_height) / 2,
                 .width = res,
                 .height = (uint16_t)ceilf((EADK_SCREEN_HEIGHT - wall_height) / 2.0),
             },

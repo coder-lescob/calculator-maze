@@ -9,11 +9,11 @@
 #define PATH_IN_SEARCH  (0xff)
 #define PATH_DONE       (0x00)
 
-bool cell_visited(Maze maze, int cell) {
+static bool cell_visited(Maze maze, int cell) {
     return maze.tiles[cell] != WALL;
 }
 
-bool cell_available(Maze maze, int cell)
+static bool cell_available(Maze maze, int cell)
 {
     // cell already visited (air or backtracking trace there)
     if (cell_visited(maze, cell)) return false;
@@ -30,7 +30,7 @@ bool cell_available(Maze maze, int cell)
 /**
  * available MUST have a length of 4
  */
-int get_available_cells(Maze maze, int current_cell, int *available) {
+static int get_available_cells(Maze maze, int current_cell, int *available) {
     
     int count = 0;
 
@@ -58,7 +58,7 @@ int get_available_cells(Maze maze, int current_cell, int *available) {
     return count;
 }
 
-int get_next_cell(Maze maze, int cell)
+static int get_next_cell(Maze maze, int cell)
 {
     int available[4];
     int num_available = get_available_cells(maze, cell, available);
