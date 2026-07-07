@@ -123,13 +123,13 @@ HitInfo raycast_single_ray(Ray ray, Maze *maze) {
 static eadk_color_t *map_block_type_to_texture(uint8_t block_type) {
     switch (block_type) {
         case 0:
-            return textures + TEXTURE_SIZE * 5;
+            return textures + TEXTURE_SIZE;
 
         case 1:
-            return textures + TEXTURE_SIZE * 3;
+            return textures;
 
         default:
-            return textures + TEXTURE_SIZE * 3;
+            return textures;
     }
 }
 
@@ -151,7 +151,8 @@ static void draw_vertical_texture_strip(uint16_t res, uint16_t x, uint16_t wall_
 
     for (uint16_t y = 0; y < wall_height; y++) {
         // get the color from the texture
-        eadk_color_t color = current_texture[hitInfo.texture_x * TEXTURE_HEIGHT + (uint8_t)texture_y];
+        uint8_t tex_y = (uint8_t)texture_y & (TEXTURE_HEIGHT - 1);
+        eadk_color_t color = current_texture[hitInfo.texture_x * TEXTURE_HEIGHT + tex_y];
 
         // darken the HORIZONTAL side
         if (hitInfo.side == HORIZONTAL) color = (color >> 1) & 0xfbef;
