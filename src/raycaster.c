@@ -135,23 +135,29 @@ static eadk_color_t *map_block_type_to_texture(uint8_t block_type) {
 }
 
 static void draw_vertical_texture_strip(uint16_t res, uint16_t x, uint16_t wall_height, HitInfo hitInfo) {
-    int16_t draw_y = (EADK_SCREEN_HEIGHT - wall_height) / 2;
-    if (draw_y < 0) draw_y = 0;
+    // compute the highest point on this wall slice
+    int16_t draw_start = (EADK_SCREEN_HEIGHT - wall_height) / 2;
+    if (draw_start < 0) draw_start = 0;
+
+    // compute the last point on the wall
+    uint16_t draw_end = wall_height + draw_start;
+    if (draw_end > EADK_SCREEN_HEIGHT) draw_end = EADK_SCREEN_HEIGHT;
 
     // compute the step of the texture y
     float delta_texture_y = TEXTURE_HEIGHT / (float)wall_height;
-    float texture_y       = (draw_y - EADK_SCREEN_HEIGHT / 2 + wall_height / 2) * delta_texture_y;
+    float texture_y       = (draw_start - EADK_SCREEN_HEIGHT / 2 + wall_height / 2) * delta_texture_y;
 
-    if (wall_height + draw_y > EADK_SCREEN_HEIGHT) {
-        // we need that wall_height + draw_y = EADK_SCREEN_HEIGHT
-        wall_height = EADK_SCREEN_HEIGHT - draw_y;
-    }
-
+    // create a buffer for the height of the screen
+    /**
+     * TODO: maybe add floor and ceiling
+     */
     eadk_color_t line_buffer[EADK_SCREEN_HEIGHT];
     memset(line_buffer, 0, EADK_SCREEN_HEIGHT * sizeof(eadk_color_t));
+
+    // get the current texture
     eadk_color_t *current_texture = map_block_type_to_texture(hitInfo.block_type);
 
-    for (uint16_t y = 0; y < wall_height; y++) {
+    for (uint16_t y = draw_start; y < draw_end; y++) {
         // get the color from the texture with avoiding overflows
         uint8_t tex_y = (uint8_t)texture_y & (TEXTURE_HEIGHT - 1);
         eadk_color_t color = current_texture[hitInfo.texture_x * TEXTURE_HEIGHT + tex_y];
@@ -160,8 +166,7 @@ static void draw_vertical_texture_strip(uint16_t res, uint16_t x, uint16_t wall_
         if (hitInfo.side == HORIZONTAL) color = (color >> 1) & 0xfbef;
 
         // write the color
-        if (draw_y + y < EADK_SCREEN_HEIGHT)
-            line_buffer[draw_y + y] = color;
+        line_buffer[y] = color;
 
         // increament the texture_y by it's delta
         texture_y += delta_texture_y;
