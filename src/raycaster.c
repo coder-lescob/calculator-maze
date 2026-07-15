@@ -96,20 +96,19 @@ HitInfo raycast_single_ray(Ray ray, Maze *maze) {
         }
     }
 
-    float distance;
-
     // Calculate distance projected on camera direction (Euclidean distance would give fisheye effect!)
-    if (hit_side == 0) distance = (side_distance_x - delta_distance_x);
-    else               distance = (side_distance_y - delta_distance_y);
+    float distance;
+    if (hit_side == VERTICAL) distance = (side_distance_x - delta_distance_x);
+    else                      distance = (side_distance_y - delta_distance_y);
 
-    // calculate value of wallX
-    float wallX; // where exactly the wall was hit
-    if (hit_side == 0) wallX = ray.origine.y + distance * ray.direction.y;
-    else               wallX = ray.origine.x + distance * ray.direction.x;
-    wallX -= (int)wallX;
+    // calculate value of wall_x
+    float wall_x; // where exactly the wall was hit
+    if (hit_side == VERTICAL) wall_x = ray.origine.y + distance * ray.direction.y;
+    else                      wall_x = ray.origine.x + distance * ray.direction.x;
+    wall_x -= (int)wall_x;
 
-    //x coordinate on the texture
-    int tex_x = (int)(wallX * (float)TEXTURE_WIDTH);
+    // x coordinate on the texture use bilinear interpolation
+    int tex_x = (int)(wall_x * (float)TEXTURE_WIDTH);
     if(hit_side == 0 && ray.direction.x > 0) tex_x = TEXTURE_WIDTH - tex_x - 1;
     if(hit_side == 1 && ray.direction.y < 0) tex_x = TEXTURE_WIDTH - tex_x - 1;
 
@@ -192,7 +191,7 @@ void raycast_render(Vec2 pos, Maze *maze, float player_angle) {
         float t = (float)i / EADK_SCREEN_WIDTH * res;
         float angle = (player_angle - field_of_view * 0.5f) + t * (field_of_view);
 
-        // garentee to have length 1 then apply correction on distance to avoid fish eye len effect
+        // garentee to have length 1
         Vec2 dir = (Vec2) { cosf(angle), sinf(angle) };
         HitInfo hitInfo = raycast_single_ray((Ray) { pos, dir }, maze);
         float distance = hitInfo.distance;
