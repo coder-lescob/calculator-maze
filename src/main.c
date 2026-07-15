@@ -7,7 +7,7 @@
 #include "maze.h"
 #include "player.h"
 
-#define VERSION ("0.3.0")
+#define VERSION ("0.4.0")
 
 const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = "Maze";
 const uint32_t eadk_api_level  __attribute__((section(".rodata.eadk_api_level"))) = 0;
