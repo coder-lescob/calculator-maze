@@ -23,7 +23,7 @@ ifeq ($(PLATFORM), simulator)
 else
     CC := arm-none-eabi-gcc
 
-    C_FLAGS = $(shell $(NWLINK) eadk-cflags-device) -MMD -MP
+    C_FLAGS = $(shell $(NWLINK) eadk-cflags-device) -MMD -MP -Os
     LD_FLAGS = $(shell $(NWLINK) eadk-ldflags-device) -lc -lm --specs=nosys.specs -fdata-sections -ffunction-sections \
   -flto -fno-fat-lto-objects -fwhole-program -fvisibility=internal \
   -Wl,-e,main \
@@ -53,7 +53,7 @@ else
 	@$(NWLINK) install-nwa $(TARGET)
 endif
 
-debug:
+debug: build
 ifeq ($(PLATFORM), simulator)
 	@gdb --args $(SIM)  --nwb $(TARGET)
 endif

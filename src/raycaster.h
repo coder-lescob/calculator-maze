@@ -20,7 +20,7 @@ typedef struct {
     Side side;
 
     uint8_t block_type;
-    uint8_t  texture_x;
+    uint8_t texture_x;
 } HitInfo;
 
 /**
