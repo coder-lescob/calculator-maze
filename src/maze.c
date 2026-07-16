@@ -117,6 +117,8 @@ Maze generate_maze(uint16_t width, uint16_t height)
     } 
     while (current_cell != 0);
 
+    maze.tiles[current_cell] = PATH_DONE;
+
     return maze;
 }
 

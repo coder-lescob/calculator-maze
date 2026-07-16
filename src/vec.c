@@ -17,3 +17,7 @@ Vec2 normalize(Vec2 v) {
     float len = sqrt(v.x * v.x + v.y * v.y);
     return (Vec2) { v.x / len, v.y / len };
 }
+
+float vec_length(Vec2 v) {
+    return sqrt(v.x * v.x + v.y * v.y);
+}

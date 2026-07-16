@@ -6,8 +6,9 @@
 #include "raycaster.h"
 #include "maze.h"
 #include "player.h"
+#include "entity.h"
 
-#define VERSION "0.4.0"
+#define VERSION "0.4.5"
 
 const char eadk_app_name[] __attribute__((section(".rodata.eadk_app_name"))) = "Maze " VERSION;
 const uint32_t eadk_api_level  __attribute__((section(".rodata.eadk_api_level"))) = 0;
@@ -20,6 +21,12 @@ int main(void) {
     uint64_t last_time = eadk_timing_millis();
     float dt = 0;
 
+    Entity entities[] = {
+        (Entity) { .entity_type = 1, .pos = (Vec2) { 0.5f, 1.5f }},
+        (Entity) { .entity_type = 1, .pos = (Vec2) { 1.5f, 0.5f }},
+        (Entity) { .entity_type = 0, .pos = (Vec2) { 1.5f, 1.5f }},
+    };
+
     while (true) {
         eadk_keyboard_state_t keyboard = eadk_keyboard_scan();
 
@@ -31,7 +38,7 @@ int main(void) {
         player_move(&player, keyboard, dt, &maze);
 
         // render the terain
-        raycast_render(player.pos, &maze, player.angle);
+        raycast_render(player, &maze, entities, sizeof(entities) / sizeof(Entity));
         
         // render fps
         char msg[50] = {0};
