@@ -207,7 +207,7 @@ void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_enti
         draw_vertical_texture_strip(i, wall_height, hitInfo);
     }
     
-    draw_entities(player, depth_buffer, entities, num_entities);
+    // draw_entities(player, depth_buffer, entities, num_entities);
 }
 
 void draw_entities(Player player, float *depth_buffer, Entity *entities, size_t num_entities) {
@@ -218,6 +218,7 @@ void draw_entities(Player player, float *depth_buffer, Entity *entities, size_t 
     float dirY   =  sinf(player.angle);
 
     // the plane is 90° away from the direction and scaled by tan fov/2
+    // simple trigonometry tan fov/2 = screen_width/2 / focal_length
     float planeX = -dirY * 0.57735026919f; // tan fov/2
     float planeY =  dirX * 0.57735026919f; // tan fov/2
 

@@ -48,9 +48,9 @@ endif
 
 run: build
 ifeq ($(PLATFORM), simulator)
-	@$(SIM) --nwb $(TARGET)
+	@$(SIM) --nwb $(TARGET) --nwb-external-data src/textures
 else
-	@$(NWLINK) install-nwa $(TARGET)
+	@$(NWLINK) install-nwa $(TARGET) --external-data src/textures
 endif
 
 debug: build
