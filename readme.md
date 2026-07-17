@@ -2,7 +2,7 @@
 
 A big maze on the numworks calculator explorable in FPS view... Where your goal is to get out of this maze ! You are attacked by monsters fortunatly you have a weapon to fight back.
 
-![title_screen](title_screen.png)
+<img src=title_screen.png width=50%>
 
 ## BUILD IT
 
