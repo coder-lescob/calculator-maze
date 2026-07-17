@@ -89,7 +89,7 @@ HitInfo raycast_single_ray(Ray ray, Maze *maze) {
             break;
         }
 
-        // compute the tile index
+        // compute the tile type
         tile_idx = map_pos.x + map_pos.y * maze->width;
 
         if (maze->tiles[tile_idx] > 0) {
@@ -135,30 +135,62 @@ static eadk_color_t *map_block_type_to_texture(uint8_t block_type) {
     }
 }
 
-static void draw_vertical_texture_strip(uint16_t x, uint16_t wall_height, HitInfo hitInfo) {
+static void draw_vertical_world_slice(uint16_t x, uint16_t wall_height, HitInfo hitInfo, EntityDepth entity_depth) {
     // compute the highest point on this wall slice
-    int16_t draw_start = (EADK_SCREEN_HEIGHT - wall_height) / 2;
+    int16_t draw_start = (SCREEN_HEIGHT - wall_height) / 2;
     if (draw_start < 0) draw_start = 0;
 
     // compute the last point on the wall
     uint16_t draw_end = wall_height + draw_start;
-    if (draw_end > EADK_SCREEN_HEIGHT) draw_end = EADK_SCREEN_HEIGHT;
+    if (draw_end > SCREEN_HEIGHT) draw_end = SCREEN_HEIGHT;
 
     // compute the step of the texture y
     float delta_texture_y = TEXTURE_HEIGHT / (float)wall_height;
-    float texture_y       = (draw_start - EADK_SCREEN_HEIGHT / 2 + wall_height / 2) * delta_texture_y;
+    float texture_y       = (draw_start - SCREEN_HEIGHT / 2 + wall_height / 2) * delta_texture_y;
+
+    // is the entity in front of the wall ?
+    bool entity_in_front = entity_depth.dst < hitInfo.distance;
+
+    // entities constants
+    int16_t entity_height, entity_draw_start_y, entity_draw_end_y;
+    color_t entity_color;
+
+    // compute the entity data only if it is in front
+    if (entity_in_front) {
+        // compute entity box
+        entity_height = abs((int16_t)(SCREEN_HEIGHT / (1.5f * entity_depth.dst)));
+        // for the entity to be on the ground
+        // draw_end_y = SCREEN_HEIGHT * (transformed_pos.y - 1) / (2 * transformed_pos.y), draw_start_y - draw_end_y = entity_height
+        // draw_start_y = SCREEN_HEIGHT * (transformed_pos.y + 1) / (2 * transformed_pos.y) - entity_height
+        entity_draw_start_y = SCREEN_HEIGHT * (entity_depth.dst + 1) / (2 * entity_depth.dst) - entity_height;
+        entity_draw_end_y   = entity_draw_start_y + entity_height; 
+        if (entity_draw_start_y < 0) entity_draw_start_y = 0;
+        if (entity_draw_end_y > SCREEN_HEIGHT) entity_draw_end_y = SCREEN_HEIGHT;
+
+        entity_color = (entity_depth.type == 0)? eadk_color_red : eadk_color_blue;
+    }
 
     // create a buffer for the height of the screen
     /**
-     * TODO: maybe add floor and ceiling
+     * TODO: add floor and sky
      */
-    eadk_color_t line_buffer[EADK_SCREEN_HEIGHT];
-    memset(line_buffer, 0, EADK_SCREEN_HEIGHT * sizeof(eadk_color_t));
+    eadk_color_t line_buffer[SCREEN_HEIGHT];
+    memset(line_buffer, 0, SCREEN_HEIGHT * sizeof(eadk_color_t));
 
     // get the current texture
     eadk_color_t *current_texture = map_block_type_to_texture(hitInfo.block_type);
+    int16_t top = (!entity_in_front)? draw_start : (draw_start < entity_draw_start_y)? draw_start : entity_draw_start_y;
+    if (top < 0) top = 0;
 
-    for (uint16_t y = draw_start; y < draw_end; y++) {
+    for (uint16_t y = top; y < draw_end || (entity_in_front && y < entity_draw_end_y); y++) {
+        if (entity_in_front) {
+            if (y >= draw_end || y < draw_start || (y >= entity_draw_start_y && y < entity_draw_end_y)) {
+                // entity drawing
+                line_buffer[y] = entity_color;
+                continue;
+            }
+        }
+
         // get the color from the texture with avoiding overflows
         uint8_t tex_y = (uint8_t)texture_y & (TEXTURE_HEIGHT - 1);
         eadk_color_t color = current_texture[hitInfo.texture_x * TEXTURE_HEIGHT + tex_y];
@@ -179,7 +211,7 @@ static void draw_vertical_texture_strip(uint16_t x, uint16_t wall_height, HitInf
             .x = x,
             .y = 0,
             .width = 1,
-            .height = EADK_SCREEN_HEIGHT,
+            .height = SCREEN_HEIGHT,
         },
         line_buffer
     );
@@ -188,10 +220,13 @@ static void draw_vertical_texture_strip(uint16_t x, uint16_t wall_height, HitInf
 void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_entities) {
     float field_of_view = PI / 3;
 
-    float depth_buffer[EADK_SCREEN_WIDTH + 1];
+    EntityDepth entities_depth[SCREEN_WIDTH];
+    // practically set the distance to infinity
+    memset(entities_depth, 0xff, sizeof(entities_depth));
+    get_entities_depth(player, entities_depth, entities, num_entities);
 
-    for (int i = 0; i <= EADK_SCREEN_WIDTH; i++) {
-        float t = (float)i / EADK_SCREEN_WIDTH;
+    for (int i = 0; i < SCREEN_WIDTH; i++) {
+        float t = (float)i / (SCREEN_WIDTH - 1);
         float angle = (player.angle - field_of_view * 0.5f) + t * (field_of_view);
 
         // garentee to have length 1
@@ -200,17 +235,14 @@ void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_enti
 
         // save the distance to the depth buffer
         float distance = hitInfo.distance;
-        depth_buffer[i] = distance;
 
         // compute the wall height
-        uint16_t wall_height = (uint16_t)(EADK_SCREEN_HEIGHT / distance);
-        draw_vertical_texture_strip(i, wall_height, hitInfo);
+        uint16_t wall_height = (uint16_t)(SCREEN_HEIGHT / distance);
+        draw_vertical_world_slice(i, wall_height, hitInfo, entities_depth[i]);
     }
-    
-    // draw_entities(player, depth_buffer, entities, num_entities);
 }
 
-void draw_entities(Player player, float *depth_buffer, Entity *entities, size_t num_entities) {
+void get_entities_depth(Player player, EntityDepth *entities_depth, Entity *entities, size_t num_entities) {
     // rganks to https://lodev.org/cgtutor/raycasting3.html
 
     // compute player dir
@@ -228,18 +260,14 @@ void draw_entities(Player player, float *depth_buffer, Entity *entities, size_t 
     // [ planeY   dirY ]                                          [ -planeY  planeX ]
     float inv_det = 1.0f / (planeX * dirY - dirX * planeY);
 
-    // sort the entities
-    uint16_t entity_order[num_entities];
-    sort_entities_by_distance(player, num_entities, entities, entity_order);
-
     for (uint16_t i = 0; i < num_entities; i++) {
         // get the type of the entity
-        uint8_t entity_type = entities[entity_order[i]].entity_type;
+        uint8_t entity_type = entities[i].entity_type;
 
         // relative pos
         Vec2 entity_pos = {
-            entities[entity_order[i]].pos.x - player.pos.x,
-            entities[entity_order[i]].pos.y - player.pos.y
+            entities[i].pos.x - player.pos.x,
+            entities[i].pos.y - player.pos.y
         };
 
         // transform sprite with the inverse camera matrix
@@ -257,82 +285,28 @@ void draw_entities(Player player, float *depth_buffer, Entity *entities, size_t 
             continue;
         }
 
-        uint16_t entity_screen_pos_x = (uint16_t)(EADK_SCREEN_WIDTH / 2 * (1 + transformed_pos.x / transformed_pos.y));
-        uint16_t entity_width =  abs((uint16_t)(EADK_SCREEN_HEIGHT / (3.0f * transformed_pos.y)));
-        uint16_t entity_height = abs((uint16_t)(EADK_SCREEN_HEIGHT / (1.5f * transformed_pos.y)));
+        int16_t entity_screen_pos_x = (int16_t)(SCREEN_WIDTH / 2 * (1 + transformed_pos.x / transformed_pos.y));
+        int16_t entity_width =  abs((int16_t)(SCREEN_HEIGHT / (3.0f * transformed_pos.y)));
+
+        // check for overflows
+        if ( entity_screen_pos_x - entity_width / 2 >= SCREEN_WIDTH 
+            || entity_screen_pos_x + entity_width / 2 < 0           ) {
+            continue;
+        }
 
         // compuet start and end
         int16_t draw_start_x = entity_screen_pos_x - entity_width / 2;
         int16_t draw_end_x   = draw_start_x + entity_width;
         if (draw_start_x < 0) draw_start_x = 0;
-        if (draw_end_x > EADK_SCREEN_WIDTH) draw_end_x = EADK_SCREEN_WIDTH;
-        
-        // for the entity to be on the ground
-        // draw_end_y = EADK_SCREEN_HEIGHT * (transformed_pos.y - 1) / (2 * transformed_pos.y), draw_start_y - draw_end_y = entity_height
-        // draw_start_y = EADK_SCREEN_HEIGHT * (transformed_pos.y + 1) / (2 * transformed_pos.y) - entity_height
-        int16_t draw_start_y = EADK_SCREEN_HEIGHT * (transformed_pos.y + 1) / (2 * transformed_pos.y) - entity_height;
-        int16_t draw_end_y   = draw_start_y + entity_height; 
-        if (draw_start_y < 0) draw_start_y = 0;
-        if (draw_end_y > EADK_SCREEN_HEIGHT) draw_end_y = EADK_SCREEN_HEIGHT;
+        if (draw_end_x > SCREEN_WIDTH) draw_end_x = SCREEN_WIDTH;
 
-        for (int16_t strip = draw_start_x; strip <= draw_end_x; strip++) {
-            if (depth_buffer[strip] <= transformed_pos.y) {
+        for (int16_t slice = draw_start_x; slice < draw_end_x; slice++) {
+            if (entities_depth[slice].dst < transformed_pos.y) {
+                // another entity is in front of this slice, don't draw this entity on this slice
                 continue;
             }
 
-            draw_rect_uniform(
-                (eadk_rect_t) {
-                    .x = strip,
-                    .y = draw_start_y,
-                    .width = 1,
-                    .height = (draw_end_y - draw_start_y) - 1,
-                },
-                (entity_type == 0)? eadk_color_red : eadk_color_blue
-            );
+            entities_depth[slice] = (EntityDepth) {.type = entity_type, .dst = transformed_pos.y };
         }
     }
-}
-
-void sort_entities_by_distance(Player player, size_t num_entities, Entity *entities, uint16_t *entity_order) {
-    struct EntityEntry entities_table[num_entities];
-    int cmp_entity_by_dst(const void *a, const void *b);
-
-    for (int i = 0; i < num_entities; i++) {
-        // compute relative pos
-        Vec2 entity_pos = {
-            entities[i].pos.x - player.pos.x,
-            entities[i].pos.y - player.pos.y
-        };
-
-        // compute the ditance to the player
-        float sqr_distance_to_player = entity_pos.x * entity_pos.x + entity_pos.y * entity_pos.y;
-        entities_table[i] = (struct EntityEntry) { .index = i, .dst = sqr_distance_to_player };
-    }
-
-    // sort them
-    qsort(entities_table, num_entities, sizeof(struct EntityEntry), cmp_entity_by_dst);
-
-    // put them in entity_order to return the value
-    for (uint16_t i = 0; i < num_entities; i++) {
-        entity_order[i] = entities_table[i].index;
-    }
-}
-
-int cmp_entity_by_dst(const void *a, const void *b) {
-    // get the entries
-    struct EntityEntry *entry_a = (struct EntityEntry *)a;
-    struct EntityEntry *entry_b = (struct EntityEntry *)b;
-
-    // account for tiny distances by not doing subtraction
-    if (entry_a->dst > entry_b->dst) {
-        // swap them
-        return -1;
-    }
-    else if (entry_a->dst < entry_b->dst) {
-        // nice please don't swap
-        return 1;
-    }
-
-    // the same who cares ?!
-    return 0;
 }

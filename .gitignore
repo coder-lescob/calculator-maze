@@ -2,3 +2,4 @@ build/
 sim_path.mak
 .vscode/
 *.exe
+.gdbinit

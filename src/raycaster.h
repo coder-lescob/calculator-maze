@@ -27,10 +27,10 @@ typedef struct {
 /**
  * to sort entities
  */
-struct EntityEntry {
-    uint16_t index;
+typedef struct {
+    uint16_t type;
     float dst;
-};
+} EntityDepth;
 
 /**
  * shoots a single ray to figure out what is in this direction.
@@ -43,9 +43,10 @@ HitInfo raycast_single_ray(Ray ray, Maze *maze);
 void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_entities);
 
 /**
- * try to draw the entities if the distance from the enity to the player is in between distance and next_distance it renders else it does not.
+ * creates an entity depth buffer where the closesed entity is stored for each slice
+ * @note entities_depth MUST be of length SCREEN_WIDTH
  */
-void draw_entities(Player player, float *depth_buffer, Entity *entities, size_t num_entities);
+void get_entities_depth(Player player, EntityDepth *entities_depth, Entity *entities, size_t num_entities);
 
 /**
  * use quick sort to sort all the entities by distance.

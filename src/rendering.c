@@ -1,4 +1,5 @@
 #include "rendering.h"
+#include <stdio.h>
 
 // FUNCTION WRAPPERS
 
@@ -23,6 +24,17 @@ void destroy_renderer() { /* the numworks has no rendering objects */ }
  * draws an uniform rectangle with the color color.
  */
 void draw_rect_uniform(rect_t rect, color_t color) {
+    if (
+        rect.x > SCREEN_WIDTH 
+        || rect.y > SCREEN_HEIGHT 
+        || rect.x + rect.width > SCREEN_WIDTH 
+        || rect.y + rect.height > SCREEN_HEIGHT
+    )
+    {
+        printf("invalid rect %d %d %d %d\n", rect.x, rect.y, rect.width, rect.height);
+        return;
+    }
+
     eadk_display_push_rect_uniform(
         rect,
         color
@@ -35,6 +47,16 @@ void draw_rect_uniform(rect_t rect, color_t color) {
  *  not doing so would result in segmentation fault
  */
 void draw_rect_textured(rect_t rect, const color_t *pixels) {
+    if (
+        rect.x > SCREEN_WIDTH 
+        || rect.y > SCREEN_HEIGHT 
+        || rect.x + rect.width > SCREEN_WIDTH 
+        || rect.y + rect.height > SCREEN_HEIGHT
+    )
+    {
+        printf("invalid rect %d %d %d %d\n", rect.x, rect.y, rect.width, rect.height);
+        return;
+    }
     eadk_display_push_rect(
         rect,
         pixels

@@ -55,6 +55,6 @@ endif
 
 debug: build
 ifeq ($(PLATFORM), simulator)
-	@gdb --args $(SIM)  --nwb $(TARGET)
+	@gdb --args $(SIM)  --nwb $(TARGET) --nwb-external-data src/textures
 endif
 	
