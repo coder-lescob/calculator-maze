@@ -10,7 +10,7 @@ NWLINK := npx --yes nwlink
 SRC_DIR = src
 SRC = $(wildcard $(SRC_DIR)/*.c)
 
-ICON := $(SRC_DIR)/icon.png
+ICON := $(SRC_DIR)/dead_end_logo.png
 ICON_O := $(BUILD_DIR)/icon.o
 
 PLATFORM := device

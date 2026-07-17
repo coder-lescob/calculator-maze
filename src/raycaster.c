@@ -2,6 +2,7 @@
 #include "maze.h"
 #include "math.h"
 #include "textures.h"
+#include "rendering.h"
 #include <string.h>
 
 #include <stdio.h>
@@ -173,7 +174,7 @@ static void draw_vertical_texture_strip(uint16_t x, uint16_t wall_height, HitInf
     }
 
     // draw it to the screen
-    eadk_display_push_rect(
+    draw_rect_textured(
         (eadk_rect_t) {
             .x = x,
             .y = 0,
@@ -271,19 +272,19 @@ void draw_entities(Player player, float *depth_buffer, Entity *entities, size_t 
         int16_t draw_start_y = EADK_SCREEN_HEIGHT * (transformed_pos.y + 1) / (2 * transformed_pos.y) - entity_height;
         int16_t draw_end_y   = draw_start_y + entity_height; 
         if (draw_start_y < 0) draw_start_y = 0;
-        if (draw_end_y >= EADK_SCREEN_HEIGHT) draw_end_y = EADK_SCREEN_HEIGHT - 1;
+        if (draw_end_y > EADK_SCREEN_HEIGHT) draw_end_y = EADK_SCREEN_HEIGHT;
 
         for (int16_t strip = draw_start_x; strip <= draw_end_x; strip++) {
             if (depth_buffer[strip] <= transformed_pos.y) {
                 continue;
             }
 
-            eadk_display_push_rect_uniform(
+            draw_rect_uniform(
                 (eadk_rect_t) {
                     .x = strip,
                     .y = draw_start_y,
                     .width = 1,
-                    .height = draw_end_y - draw_start_y,
+                    .height = (draw_end_y - draw_start_y) - 1,
                 },
                 (entity_type == 0)? eadk_color_red : eadk_color_blue
             );
@@ -292,10 +293,6 @@ void draw_entities(Player player, float *depth_buffer, Entity *entities, size_t 
 }
 
 void sort_entities_by_distance(Player player, size_t num_entities, Entity *entities, uint16_t *entity_order) {
-    /**
-     * TODO: sort entities
-     */
-
     struct EntityEntry entities_table[num_entities];
     int cmp_entity_by_dst(const void *a, const void *b);
 
