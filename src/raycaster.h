@@ -4,6 +4,7 @@
 #include "vec.h"
 #include "maze.h"
 #include "entity.h"
+#include "texture_loader.h"
 
 typedef struct {
     Vec2 origine;
@@ -40,18 +41,12 @@ HitInfo raycast_single_ray(Ray ray, Maze *maze);
 /**
  * renders a frame by shoot many rays.
  */
-void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_entities);
+void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_entities, textures_t textures);
 
 /**
  * creates an entity depth buffer where the closesed entity is stored for each slice
  * @note entities_depth MUST be of length SCREEN_WIDTH
  */
 void get_entities_depth(Player player, EntityDepth *entities_depth, Entity *entities, size_t num_entities);
-
-/**
- * use quick sort to sort all the entities by distance.
- * @note entity order MUST have the same length as entities
- */
-void sort_entities_by_distance(Player player, size_t num_entities, Entity *entities, uint16_t *entity_order);
 
 #endif

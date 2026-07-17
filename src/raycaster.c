@@ -1,7 +1,7 @@
 #include "raycaster.h"
 #include "maze.h"
 #include "math.h"
-#include "textures.h"
+#include "texture_loader.h"
 #include "rendering.h"
 #include <string.h>
 
@@ -122,20 +122,20 @@ HitInfo raycast_single_ray(Ray ray, Maze *maze) {
     };
 }
 
-static eadk_color_t *map_block_type_to_texture(uint8_t block_type) {
+static eadk_color_t *map_block_type_to_texture(uint8_t block_type, textures_t textures) {
     switch (block_type) {
         case 0:
-            return textures + TEXTURE_SIZE;
+            return textures.wall_textures + TEXTURE_SIZE * 5;
 
         case 1:
-            return textures;
+            return textures.wall_textures + TEXTURE_SIZE * 3;
 
         default:
-            return textures;
+            return textures.wall_textures;
     }
 }
 
-static void draw_vertical_world_slice(uint16_t x, uint16_t wall_height, HitInfo hitInfo, EntityDepth entity_depth) {
+static void draw_vertical_world_slice(uint16_t x, uint16_t wall_height, HitInfo hitInfo, EntityDepth entity_depth, textures_t textures) {
     // compute the highest point on this wall slice
     int16_t draw_start = (SCREEN_HEIGHT - wall_height) / 2;
     if (draw_start < 0) draw_start = 0;
@@ -178,7 +178,7 @@ static void draw_vertical_world_slice(uint16_t x, uint16_t wall_height, HitInfo 
     memset(line_buffer, 0, SCREEN_HEIGHT * sizeof(eadk_color_t));
 
     // get the current texture
-    eadk_color_t *current_texture = map_block_type_to_texture(hitInfo.block_type);
+    eadk_color_t *current_texture = map_block_type_to_texture(hitInfo.block_type, textures);
     int16_t top = (!entity_in_front)? draw_start : (draw_start < entity_draw_start_y)? draw_start : entity_draw_start_y;
     if (top < 0) top = 0;
 
@@ -217,7 +217,7 @@ static void draw_vertical_world_slice(uint16_t x, uint16_t wall_height, HitInfo 
     );
 }
 
-void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_entities) {
+void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_entities, textures_t textures) {
     float field_of_view = PI / 3;
 
     EntityDepth entities_depth[SCREEN_WIDTH];
@@ -238,7 +238,7 @@ void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_enti
 
         // compute the wall height
         uint16_t wall_height = (uint16_t)(SCREEN_HEIGHT / distance);
-        draw_vertical_world_slice(i, wall_height, hitInfo, entities_depth[i]);
+        draw_vertical_world_slice(i, wall_height, hitInfo, entities_depth[i], textures);
     }
 }
 

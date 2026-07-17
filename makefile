@@ -18,7 +18,7 @@ PLATFORM := device
 ifeq ($(PLATFORM), simulator)
     CC := gcc
 
-    C_FLAGS := $(shell $(NWLINK) eadk-cflags-simulator) -ggdb -fno-exceptions -Wall 
+    C_FLAGS := $(shell $(NWLINK) eadk-cflags-simulator) -ggdb -fno-exceptions -Wall
     LD_FLAGS := $(shell $(NWLINK) eadk-ldflags-simulator) -undefined,dynamic_lookup
 else
     CC := arm-none-eabi-gcc

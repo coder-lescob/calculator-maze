@@ -32,7 +32,7 @@ void keyboard_poll(keyboard_t *keyboard) {
 /**
  * get if a key is pressed
  */
-bool key_pressed(keyboard_t *keyboard, key_t key) {
+bool key_pressed(keyboard_t *keyboard, keyboard_key_t key) {
     return eadk_keyboard_key_down(
         *keyboard,
         key

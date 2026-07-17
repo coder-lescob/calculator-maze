@@ -59,7 +59,7 @@ typedef enum {
     key_ee = 50,
     key_ans = 51,
     key_exe = 52
-  } key_t;
+  } keyboard_key_t;
 
 #else
 #error PLATFORM NOT SUPPORTED
@@ -85,6 +85,6 @@ void keyboard_poll(keyboard_t *keyboard);
 /**
  * get if a key is pressed
  */
-bool key_pressed(keyboard_t *keyboard, key_t key);
+bool key_pressed(keyboard_t *keyboard, keyboard_key_t key);
 
 #endif

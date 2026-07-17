@@ -8,6 +8,7 @@
 #include "rendering.h"
 #include "input.h"
 #include "timings.h"
+#include "texture_loader.h"
 
 // game files
 #include "vec.h"
@@ -15,10 +16,8 @@
 #include "maze.h"
 #include "player.h"
 #include "entity.h"
-#include "textures.h"
 
-
-#define VERSION "0.4.6"
+#define VERSION "0.4.8"
 
 #ifdef PLATFORM_CALCULATOR
 
@@ -29,16 +28,29 @@ const uint32_t eadk_api_level  __attribute__((section(".rodata.eadk_api_level"))
 #endif
 
 int main(void) {
-    load_textures();
     
     create_renderer();
-    eadk_keyboard_state_t keyboard = create_keyboard();
+    
+    keyboard_t keyboard = create_keyboard();
+    textures_t textures = load_textures();
+    
+    uint64_t last_time = get_time();
+    float dt = 0;
+
+    draw_rect_textured(eadk_screen_rect, textures.title_screen);
+    time_ms_t start_time = get_time();
+    while ((get_time() - start_time) < 3000) {
+        keyboard_poll(&keyboard);
+
+        // compute delta time
+        dt = (get_time() - last_time) / 1000.0f;
+        last_time = get_time();
+    }
 
     Maze maze = generate_maze(20, 20);
     Player player = { .pos = (Vec2) { 0.5f, 0.5f }, .angle = 0 };
 
-    uint64_t last_time = get_time();
-    float dt = 0;
+    
 
     Entity entities[] = {
         (Entity) { .entity_type = 1, .pos = (Vec2) { 0.5f, 1.5f }},
@@ -57,7 +69,7 @@ int main(void) {
         player_move(&player, keyboard, dt, &maze);
 
         // render the terain
-        raycast_render(player, &maze, entities, sizeof(entities) / sizeof(Entity));
+        raycast_render(player, &maze, entities, sizeof(entities) / sizeof(Entity), textures);
         
         // render fps
         char msg[50] = {0};
