@@ -50,8 +50,6 @@ int main(void) {
     Maze maze = generate_maze(20, 20);
     Player player = { .pos = (Vec2) { 0.5f, 0.5f }, .angle = 0 };
 
-    
-
     Entity entities[] = {
         (Entity) { .entity_type = 1, .pos = (Vec2) { 0.5f, 1.5f }},
         (Entity) { .entity_type = 1, .pos = (Vec2) { 1.5f, 0.5f }},
@@ -67,6 +65,11 @@ int main(void) {
 
         // move the player
         player_move(&player, keyboard, dt, &maze);
+
+        // move entities
+        for (uint16_t i = 0; i < sizeof(entities) / sizeof(Entity); i++) {
+            entity_move(&entities[i], dt, &player);
+        }
 
         // render the terain
         raycast_render(player, &maze, entities, sizeof(entities) / sizeof(Entity), textures);

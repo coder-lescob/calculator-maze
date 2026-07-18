@@ -11,6 +11,12 @@
 // Yes I actually know that much
 #define PI 3.141592653589793f
 
+#define NEAR_CAM_DEPTH (0.1f)
+
+// 60°
+static const float field_of_view = PI/3;
+static float tan_half_fov = -1;
+
 HitInfo raycast_single_ray(Ray ray, Maze *maze) {
     // thank to https://lodev.org/cgtutor/raycasting.html
     // for the algorithms
@@ -149,7 +155,7 @@ static void draw_vertical_world_slice(uint16_t x, uint16_t wall_height, HitInfo 
     float texture_y       = (draw_start - SCREEN_HEIGHT / 2 + wall_height / 2) * delta_texture_y;
 
     // is the entity in front of the wall ?
-    bool entity_in_front = entity_depth.dst < hitInfo.distance;
+    bool entity_in_front = entity_depth.dst != INFINITY && entity_depth.dst < hitInfo.distance;
 
     // entities constants
     int16_t entity_height, entity_draw_start_y, entity_draw_end_y;
@@ -218,13 +224,12 @@ static void draw_vertical_world_slice(uint16_t x, uint16_t wall_height, HitInfo 
 }
 
 void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_entities, textures_t textures) {
-    float field_of_view = PI / 3;
 
+    // compute the depth and the slice of all entities
     EntityDepth entities_depth[SCREEN_WIDTH];
-    // practically set the distance to infinity
-    memset(entities_depth, 0xff, sizeof(entities_depth));
     get_entities_depth(player, entities_depth, entities, num_entities);
 
+    // raycast
     for (int i = 0; i < SCREEN_WIDTH; i++) {
         float t = (float)i / (SCREEN_WIDTH - 1);
         float angle = (player.angle - field_of_view * 0.5f) + t * (field_of_view);
@@ -243,16 +248,24 @@ void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_enti
 }
 
 void get_entities_depth(Player player, EntityDepth *entities_depth, Entity *entities, size_t num_entities) {
-    // rganks to https://lodev.org/cgtutor/raycasting3.html
+    // thanks to https://lodev.org/cgtutor/raycasting3.html
+
+    // initialize the distances to infinity
+    for (uint16_t i = 0; i < SCREEN_WIDTH; i++) {
+        entities_depth[i].dst = INFINITY;
+    }
 
     // compute player dir
     float dirX   =  cosf(player.angle);
     float dirY   =  sinf(player.angle);
 
+    // cache the tangent of hafe fov
+    if (tan_half_fov == -1) tan_half_fov = tanf(field_of_view / 2);
+
     // the plane is 90° away from the direction and scaled by tan fov/2
     // simple trigonometry tan fov/2 = screen_width/2 / focal_length
-    float planeX = -dirY * 0.57735026919f; // tan fov/2
-    float planeY =  dirX * 0.57735026919f; // tan fov/2
+    float planeX = -dirY * tan_half_fov;
+    float planeY =  dirX * tan_half_fov;
 
     // precompute the cpnstant factor for the inverse camera matrix
     // [ planeX   dirX ] -1                                       [ dirY      -dirX ]
@@ -280,7 +293,7 @@ void get_entities_depth(Player player, EntityDepth *entities_depth, Entity *enti
             inv_det * (-planeY * entity_pos.x + planeX * entity_pos.y), // Y is actually the depth
         };
 
-        if (transformed_pos.y <= 0) {
+        if (transformed_pos.y <= NEAR_CAM_DEPTH) {
             // behind the camera
             continue;
         }
