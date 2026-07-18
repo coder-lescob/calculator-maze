@@ -11,11 +11,7 @@
 // Yes I actually know that much
 #define PI 3.141592653589793f
 
-#define NEAR_CAM_DEPTH (0.1f)
-
-// 60°
-static const float field_of_view = PI/3;
-static float tan_half_fov = -1;
+#define NEAR_CAM_DEPTH (0.05f)
 
 HitInfo raycast_single_ray(Ray ray, Maze *maze) {
     // thank to https://lodev.org/cgtutor/raycasting.html
@@ -128,7 +124,7 @@ HitInfo raycast_single_ray(Ray ray, Maze *maze) {
     };
 }
 
-static eadk_color_t *map_block_type_to_texture(uint8_t block_type, textures_t textures) {
+static color_t *map_block_type_to_texture(uint8_t block_type, textures_t textures) {
     switch (block_type) {
         case 0:
             return textures.wall_textures + TEXTURE_SIZE * 5;
@@ -141,39 +137,47 @@ static eadk_color_t *map_block_type_to_texture(uint8_t block_type, textures_t te
     }
 }
 
-static void draw_vertical_world_slice(uint16_t x, uint16_t wall_height, HitInfo hitInfo, EntityDepth entity_depth, textures_t textures) {
+static void draw_vertical_world_slice(uint16_t x, uint16_t sky_x, uint16_t wall_height, HitInfo hitInfo, EntityDepth entity_depth, textures_t textures) {
+    int16_t player_height = 20;
+    int16_t wall_center = SCREEN_HEIGHT / 2 + player_height / hitInfo.distance;
+    int16_t entity_center = SCREEN_HEIGHT / 2 + player_height / entity_depth.dst;
+
     // compute the highest point on this wall slice
-    int16_t draw_start = (SCREEN_HEIGHT - wall_height) / 2;
+    int16_t draw_start = wall_center - wall_height / 2;
     if (draw_start < 0) draw_start = 0;
 
     // compute the last point on the wall
-    uint16_t draw_end = wall_height + draw_start;
+    uint16_t draw_end = wall_center + wall_height / 2;
     if (draw_end > SCREEN_HEIGHT) draw_end = SCREEN_HEIGHT;
 
     // compute the step of the texture y
     float delta_texture_y = TEXTURE_HEIGHT / (float)wall_height;
-    float texture_y       = (draw_start - SCREEN_HEIGHT / 2 + wall_height / 2) * delta_texture_y;
+    float texture_y       = (draw_start - (wall_center - wall_height / 2)) * delta_texture_y;
 
     // is the entity in front of the wall ?
     bool entity_in_front = entity_depth.dst != INFINITY && entity_depth.dst < hitInfo.distance;
 
     // entities constants
     int16_t entity_height, entity_draw_start_y, entity_draw_end_y;
-    color_t entity_color;
+    float delta_entity_texture_y, entity_texture_y;
 
     // compute the entity data only if it is in front
     if (entity_in_front) {
         // compute entity box
         entity_height = abs((int16_t)(SCREEN_HEIGHT / (1.5f * entity_depth.dst)));
+
         // for the entity to be on the ground
-        // draw_end_y = SCREEN_HEIGHT * (transformed_pos.y - 1) / (2 * transformed_pos.y), draw_start_y - draw_end_y = entity_height
-        // draw_start_y = SCREEN_HEIGHT * (transformed_pos.y + 1) / (2 * transformed_pos.y) - entity_height
-        entity_draw_start_y = SCREEN_HEIGHT * (entity_depth.dst + 1) / (2 * entity_depth.dst) - entity_height;
-        entity_draw_end_y   = entity_draw_start_y + entity_height; 
+        entity_draw_end_y     = entity_center + SCREEN_HEIGHT / (2 * entity_depth.dst);
+        int16_t entity_high_y = entity_draw_end_y - entity_height;
+        entity_draw_start_y   = entity_high_y;
+
+        // clamp draw_start and draw_end
         if (entity_draw_start_y < 0) entity_draw_start_y = 0;
         if (entity_draw_end_y > SCREEN_HEIGHT) entity_draw_end_y = SCREEN_HEIGHT;
 
-        entity_color = (entity_depth.type == 0)? eadk_color_red : eadk_color_blue;
+        // compute texture coords
+        delta_entity_texture_y = 0x3f / (float)entity_height;
+        entity_texture_y       = (entity_draw_start_y - entity_high_y) * delta_entity_texture_y;
     }
 
     // create a buffer for the height of the screen
@@ -181,10 +185,11 @@ static void draw_vertical_world_slice(uint16_t x, uint16_t wall_height, HitInfo 
      * TODO: add floor and sky
      */
     eadk_color_t line_buffer[SCREEN_HEIGHT];
-    memset(line_buffer, 0, SCREEN_HEIGHT * sizeof(eadk_color_t));
+    memcpy(line_buffer, textures.sky_texture + sky_x * SCREEN_HEIGHT / 2, SCREEN_HEIGHT / 2 * sizeof(color_t));
+    memset(line_buffer + SCREEN_HEIGHT/2, 0, SCREEN_HEIGHT/2 * sizeof(color_t));
 
     // get the current texture
-    eadk_color_t *current_texture = map_block_type_to_texture(hitInfo.block_type, textures);
+    color_t *current_texture = map_block_type_to_texture(hitInfo.block_type, textures);
     int16_t top = (!entity_in_front)? draw_start : (draw_start < entity_draw_start_y)? draw_start : entity_draw_start_y;
     if (top < 0) top = 0;
 
@@ -192,14 +197,19 @@ static void draw_vertical_world_slice(uint16_t x, uint16_t wall_height, HitInfo 
         if (entity_in_front) {
             if (y >= draw_end || y < draw_start || (y >= entity_draw_start_y && y < entity_draw_end_y)) {
                 // entity drawing
-                line_buffer[y] = entity_color;
+                uint8_t tex_y = (uint8_t)entity_texture_y & 0x3f;
+                color_t color = tex_y << 5 | entity_depth.texture_x << 11;
+
+                line_buffer[y] = color;
+
+                entity_texture_y += delta_entity_texture_y;
                 continue;
             }
         }
 
         // get the color from the texture with avoiding overflows
         uint8_t tex_y = (uint8_t)texture_y & (TEXTURE_HEIGHT - 1);
-        eadk_color_t color = current_texture[hitInfo.texture_x * TEXTURE_HEIGHT + tex_y];
+        color_t color = current_texture[hitInfo.texture_x * TEXTURE_HEIGHT + tex_y];
 
         // darken the HORIZONTAL side
         if (hitInfo.side == HORIZONTAL) color = (color >> 1) & 0xfbef;
@@ -231,19 +241,26 @@ void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_enti
 
     // raycast
     for (int i = 0; i < SCREEN_WIDTH; i++) {
-        float t = (float)i / (SCREEN_WIDTH - 1);
-        float angle = (player.angle - field_of_view * 0.5f) + t * (field_of_view);
 
-        // garentee to have length 1
-        Vec2 dir = (Vec2) { cosf(angle), sinf(angle) };
+        // x-coordinate in camera space
+        float camera_x = 2 * i / (float)SCREEN_WIDTH - 1; 
+
+        // compute direction of the ray
+        Vec2 dir = {
+            player.dir.x + player.plane.x * camera_x, 
+            player.dir.y + player.plane.y * camera_x
+        };
+
+        // cast the ray
         HitInfo hitInfo = raycast_single_ray((Ray) { player.pos, dir }, maze);
 
         // save the distance to the depth buffer
         float distance = hitInfo.distance;
+        int16_t sky_x = i;
 
         // compute the wall height
         uint16_t wall_height = (uint16_t)(SCREEN_HEIGHT / distance);
-        draw_vertical_world_slice(i, wall_height, hitInfo, entities_depth[i], textures);
+        draw_vertical_world_slice(i, sky_x, wall_height, hitInfo, entities_depth[i], textures);
     }
 }
 
@@ -255,23 +272,11 @@ void get_entities_depth(Player player, EntityDepth *entities_depth, Entity *enti
         entities_depth[i].dst = INFINITY;
     }
 
-    // compute player dir
-    float dirX   =  cosf(player.angle);
-    float dirY   =  sinf(player.angle);
-
-    // cache the tangent of hafe fov
-    if (tan_half_fov == -1) tan_half_fov = tanf(field_of_view / 2);
-
-    // the plane is 90° away from the direction and scaled by tan fov/2
-    // simple trigonometry tan fov/2 = screen_width/2 / focal_length
-    float planeX = -dirY * tan_half_fov;
-    float planeY =  dirX * tan_half_fov;
-
-    // precompute the cpnstant factor for the inverse camera matrix
+    // precompute the constant factor for the inverse camera matrix
     // [ planeX   dirX ] -1                                       [ dirY      -dirX ]
     // [               ]       =  1/(planeX*dirY-dirX*planeY) *   [                 ]
     // [ planeY   dirY ]                                          [ -planeY  planeX ]
-    float inv_det = 1.0f / (planeX * dirY - dirX * planeY);
+    float inv_det = 1.0f / (player.plane.x * player.dir.y - player.dir.x * player.plane.y);
 
     for (uint16_t i = 0; i < num_entities; i++) {
         // get the type of the entity
@@ -289,8 +294,8 @@ void get_entities_depth(Player player, EntityDepth *entities_depth, Entity *enti
         // [ planeY   dirY ]                                          [ -planeY  planeX ]
 
         Vec2 transformed_pos = {
-            inv_det * ( dirY * entity_pos.x   - dirX * entity_pos.y),
-            inv_det * (-planeY * entity_pos.x + planeX * entity_pos.y), // Y is actually the depth
+            inv_det * ( player.dir.y * entity_pos.x   - player.dir.x   * entity_pos.y),
+            inv_det * (-player.plane.y * entity_pos.x + player.plane.x * entity_pos.y), // Y is actually the depth
         };
 
         if (transformed_pos.y <= NEAR_CAM_DEPTH) {
@@ -313,13 +318,18 @@ void get_entities_depth(Player player, EntityDepth *entities_depth, Entity *enti
         if (draw_start_x < 0) draw_start_x = 0;
         if (draw_end_x > SCREEN_WIDTH) draw_end_x = SCREEN_WIDTH;
 
+        // texture x computation
+        float delta_texture_x = 0x1f / (float)entity_width;
+        float texture_x       = (draw_start_x - entity_screen_pos_x + entity_width / 2) * delta_texture_x;
+
         for (int16_t slice = draw_start_x; slice < draw_end_x; slice++) {
             if (entities_depth[slice].dst < transformed_pos.y) {
                 // another entity is in front of this slice, don't draw this entity on this slice
                 continue;
             }
 
-            entities_depth[slice] = (EntityDepth) {.type = entity_type, .dst = transformed_pos.y };
+            entities_depth[slice] = (EntityDepth) {.type = entity_type, .texture_x = (uint8_t)texture_x & 0x1f, .dst = transformed_pos.y };
+            texture_x += delta_texture_x;
         }
     }
 }

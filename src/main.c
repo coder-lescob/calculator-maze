@@ -19,6 +19,9 @@
 
 #define VERSION "0.4.8"
 
+// Yes I actually know that much
+#define PI 3.141592653589793f
+
 #ifdef PLATFORM_CALCULATOR
 
 // calculator specific sections
@@ -38,8 +41,15 @@ int main(void) {
     float dt = 0;
 
     draw_rect_textured(eadk_screen_rect, textures.title_screen);
-    time_ms_t start_time = get_time();
-    while ((get_time() - start_time) < 3000) {
+    keyboard_poll(&keyboard);
+    while (key_pressed(&keyboard, key_ok)) {
+        keyboard_poll(&keyboard);
+
+        // compute delta time
+        dt = (get_time() - last_time) / 1000.0f;
+        last_time = get_time();
+    }
+    while (!key_pressed(&keyboard, key_ok)) {
         keyboard_poll(&keyboard);
 
         // compute delta time
@@ -48,7 +58,7 @@ int main(void) {
     }
 
     Maze maze = generate_maze(20, 20);
-    Player player = { .pos = (Vec2) { 0.5f, 0.5f }, .angle = 0 };
+    Player player = new_player((Vec2) { 0.5f, 0.5f }, (Vec2) { 1, 0 }, PI/3 /* 60° */);
 
     Entity entities[] = {
         (Entity) { .entity_type = 1, .pos = (Vec2) { 0.5f, 1.5f }},
@@ -64,7 +74,7 @@ int main(void) {
         }
 
         // move the player
-        player_move(&player, keyboard, dt, &maze);
+        player_move(&player, &keyboard, dt, &maze);
 
         // move entities
         for (uint16_t i = 0; i < sizeof(entities) / sizeof(Entity); i++) {

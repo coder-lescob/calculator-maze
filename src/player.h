@@ -4,18 +4,25 @@
 #include <eadk.h>
 #include "vec.h"
 #include "maze.h"
+#include "input.h"
 
 typedef struct {
     Vec2 pos;
-
-    // in radians
-    float angle;
+    Vec2 dir;
+    Vec2 plane;
 } Player;
 
 /**
- * moves the player using calculator keyboard
+ * creates a new player with these characteristics
+ * @note field_of_view in radians
  */
-void player_move(Player *player, eadk_keyboard_state_t keyboard, float dt, Maze *maze);
+Player new_player(Vec2 pos, Vec2 dir, float field_of_view);
+
+/**
+ * moves the player using calculator keyboard
+ * @note dt in seconds
+ */
+void player_move(Player *player, keyboard_t *keyboard, float dt, Maze *maze);
 
 /**
  * resoves collisions by modifying dx and dy to not enter in colision

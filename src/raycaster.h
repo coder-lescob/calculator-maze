@@ -30,6 +30,7 @@ typedef struct {
  */
 typedef struct {
     uint16_t type;
+    uint8_t texture_x;
     float dst;
 } EntityDepth;
 

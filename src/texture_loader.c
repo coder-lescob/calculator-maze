@@ -1,5 +1,6 @@
 #include "texture_loader.h"
 
+#include "platform.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -25,8 +26,7 @@ textures_t load_textures(void) {
         .wall_textures = (color_t *)wall_ptr,
         .title_screen = (color_t *)titl_ptr,
         .sky_texture = (color_t *)sky_ptr,
-    };
-
+    }; 
     return textures;
 }
 
@@ -38,7 +38,7 @@ header_t parse_header(const char *file_content) {
 
     // parse the header length
     uint32_t header_len = next_u32(&file_content);
-    char name[5] = {0};
+    char name[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
     for (uint16_t i = 0; i < header_len; i += 8) {
         // read section name
@@ -99,7 +99,7 @@ void next_str(const char **file_ptr, char *str, uint16_t len) {
     memcpy(str, *file_ptr, len);
 
     // advance the pointer
-    *file_ptr += 4;
+    *file_ptr += len;
 }
 
 #else
