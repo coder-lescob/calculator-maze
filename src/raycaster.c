@@ -117,8 +117,8 @@ HitInfo raycast_single_ray(Ray ray, Maze *maze) {
 
     // x coordinate on the texture use bilinear interpolation
     int tex_x = (int)(wall_x * (float)TEXTURE_WIDTH);
-    if(hit_side == 0 && ray.direction.x > 0) tex_x = TEXTURE_WIDTH - tex_x - 1;
-    if(hit_side == 1 && ray.direction.y < 0) tex_x = TEXTURE_WIDTH - tex_x - 1;
+    if(hit_side == VERTICAL   && ray.direction.x > 0) tex_x = TEXTURE_WIDTH - tex_x - 1;
+    if(hit_side == HORIZONTAL && ray.direction.y < 0) tex_x = TEXTURE_WIDTH - tex_x - 1;
 
     return (HitInfo) {
         .distance = distance,
