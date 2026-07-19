@@ -36,6 +36,10 @@ int main(void) {
     
     keyboard_t keyboard = create_keyboard();
     textures_t textures = load_textures();
+    if (!textures.successful_load) {
+        // exit application
+        goto endapp_init;
+    }
     
     uint64_t last_time = get_time();
     float dt = 0;
@@ -96,10 +100,12 @@ int main(void) {
         last_time = get_time();
     }
 
+    // free the maze
+    free_maze(&maze);
+    unload_textures(&textures);
+
+endapp_init:
     // destroy the keyboard
     destroy_keyboard(&keyboard);
     destroy_renderer();
-
-    // free the maze
-    free_maze(&maze);
 }

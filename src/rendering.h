@@ -11,6 +11,7 @@
 // constants
 static const uint16_t SCREEN_WIDTH  = EADK_SCREEN_WIDTH;
 static const uint16_t SCREEN_HEIGHT = EADK_SCREEN_HEIGHT;
+static const uint16_t LITTE_FONT_HEIGHT = 14; // 14px
 
 // other types
 typedef eadk_point_t point_t;

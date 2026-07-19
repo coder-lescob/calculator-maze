@@ -19,18 +19,20 @@
 
 typedef struct {
     uint32_t wall_offset;
+    uint32_t enty_offset;
     uint32_t titl_offset;
     uint32_t sky_offset;
 } header_t;
 
 typedef struct {
+    bool successful_load;
     // sizes
     uint16_t wall_tex_w, wall_tex_h;
-    //uint16_t entities_tex_w, entities_tex_h;
+    uint16_t entities_tex_w, entities_tex_h;
 
     // content
     color_t *wall_textures;
-    //color_t *entities_textures;
+    color_t *entities_textures;
     color_t *sky_texture;       // sky texture must be SCREEN_WIDTH x SCREEN_HEIGHT/2
     color_t *title_screen;
 } textures_t;
@@ -41,9 +43,19 @@ typedef struct {
 textures_t load_textures(void);
 
 /**
+ * free all texture data
+ */
+void unload_textures(textures_t *textures);
+
+/**
  * parses the header of the texture file
  */
 header_t parse_header(const char *file_content);
+
+/**
+ * check for any missing section
+ */
+bool missing_sections(header_t *header);
 
 /**
  * reads the next uint32 from the file and increament the pointer by 4 bytes

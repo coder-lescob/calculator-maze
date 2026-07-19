@@ -48,6 +48,6 @@ void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_enti
  * creates an entity depth buffer where the closesed entity is stored for each slice
  * @note entities_depth MUST be of length SCREEN_WIDTH
  */
-void get_entities_depth(Player player, EntityDepth *entities_depth, Entity *entities, size_t num_entities);
+void get_entities_depth(Player player, EntityDepth *entities_depth, Entity *entities, size_t num_entities, textures_t textures);
 
 #endif

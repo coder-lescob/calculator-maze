@@ -164,7 +164,7 @@ static void draw_vertical_world_slice(uint16_t x, uint16_t sky_x, uint16_t wall_
     // compute the entity data only if it is in front
     if (entity_in_front) {
         // compute entity box
-        entity_height = abs((int16_t)(SCREEN_HEIGHT / (1.5f * entity_depth.dst)));
+        entity_height = abs((int16_t)(SCREEN_HEIGHT / (1.2f * entity_depth.dst)));
 
         // for the entity to be on the ground
         entity_draw_end_y     = entity_center + SCREEN_HEIGHT / (2 * entity_depth.dst);
@@ -176,7 +176,7 @@ static void draw_vertical_world_slice(uint16_t x, uint16_t sky_x, uint16_t wall_
         if (entity_draw_end_y > SCREEN_HEIGHT) entity_draw_end_y = SCREEN_HEIGHT;
 
         // compute texture coords
-        delta_entity_texture_y = 0x3f / (float)entity_height;
+        delta_entity_texture_y = textures.entities_tex_h / (float)entity_height;
         entity_texture_y       = (entity_draw_start_y - entity_high_y) * delta_entity_texture_y;
     }
 
@@ -197,13 +197,19 @@ static void draw_vertical_world_slice(uint16_t x, uint16_t sky_x, uint16_t wall_
         if (entity_in_front) {
             if (y >= draw_end || y < draw_start || (y >= entity_draw_start_y && y < entity_draw_end_y)) {
                 // entity drawing
-                uint8_t tex_y = (uint8_t)entity_texture_y & 0x3f;
-                color_t color = tex_y << 5 | entity_depth.texture_x << 11;
-
-                line_buffer[y] = color;
-
+                uint8_t tex_y = (uint8_t)entity_texture_y % textures.entities_tex_h;
+                color_t color = textures.entities_textures[tex_y + entity_depth.texture_x * textures.entities_tex_h];
+                
                 entity_texture_y += delta_entity_texture_y;
-                continue;
+
+                if (color != eadk_color_black) {
+                    line_buffer[y] = color;
+                    continue;
+                }
+
+                if (y >= draw_end || y < draw_start) {
+                    continue;
+                }
             }
         }
 
@@ -237,7 +243,7 @@ void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_enti
 
     // compute the depth and the slice of all entities
     EntityDepth entities_depth[SCREEN_WIDTH];
-    get_entities_depth(player, entities_depth, entities, num_entities);
+    get_entities_depth(player, entities_depth, entities, num_entities, textures);
 
     // raycast
     for (int i = 0; i < SCREEN_WIDTH; i++) {
@@ -264,7 +270,7 @@ void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_enti
     }
 }
 
-void get_entities_depth(Player player, EntityDepth *entities_depth, Entity *entities, size_t num_entities) {
+void get_entities_depth(Player player, EntityDepth *entities_depth, Entity *entities, size_t num_entities, textures_t textures) {
     // thanks to https://lodev.org/cgtutor/raycasting3.html
 
     // initialize the distances to infinity
@@ -304,7 +310,7 @@ void get_entities_depth(Player player, EntityDepth *entities_depth, Entity *enti
         }
 
         int16_t entity_screen_pos_x = (int16_t)(SCREEN_WIDTH / 2 * (1 + transformed_pos.x / transformed_pos.y));
-        int16_t entity_width =  abs((int16_t)(SCREEN_HEIGHT / (3.0f * transformed_pos.y)));
+        int16_t entity_width =  abs((int16_t)(SCREEN_HEIGHT / (2.0f * transformed_pos.y)));
 
         // check for overflows
         if ( entity_screen_pos_x - entity_width / 2 >= SCREEN_WIDTH 
@@ -319,7 +325,7 @@ void get_entities_depth(Player player, EntityDepth *entities_depth, Entity *enti
         if (draw_end_x > SCREEN_WIDTH) draw_end_x = SCREEN_WIDTH;
 
         // texture x computation
-        float delta_texture_x = 0x1f / (float)entity_width;
+        float delta_texture_x = textures.entities_tex_w / (float)entity_width;
         float texture_x       = (draw_start_x - entity_screen_pos_x + entity_width / 2) * delta_texture_x;
 
         for (int16_t slice = draw_start_x; slice < draw_end_x; slice++) {
@@ -328,7 +334,7 @@ void get_entities_depth(Player player, EntityDepth *entities_depth, Entity *enti
                 continue;
             }
 
-            entities_depth[slice] = (EntityDepth) {.type = entity_type, .texture_x = (uint8_t)texture_x & 0x1f, .dst = transformed_pos.y };
+            entities_depth[slice] = (EntityDepth) {.type = entity_type, .texture_x = (uint8_t)texture_x % textures.entities_tex_w, .dst = transformed_pos.y };
             texture_x += delta_texture_x;
         }
     }
