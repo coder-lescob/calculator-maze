@@ -25,13 +25,16 @@ typedef struct {
     uint8_t texture_x;
 } HitInfo;
 
-/**
- * to sort entities
- */
 typedef struct {
     uint16_t type;
     uint8_t texture_x;
     float dst;
+} EntitySlice;
+
+typedef struct {
+    float min_depth; // cache the min depth for extra speed
+    uint8_t num_entities; // I wont allow more than 255 entities to be viewed through
+    EntitySlice *entities;
 } EntityDepth;
 
 /**
