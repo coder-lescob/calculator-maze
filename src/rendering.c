@@ -70,7 +70,7 @@ void draw_rect_textured(rect_t rect, const color_t *pixels) {
 void draw_string(point_t point, const char *str) {
     eadk_display_draw_string(
         str, 
-        point, 
+        *(eadk_point_t *)&point, 
         false, 
         eadk_color_white, 
         eadk_color_black

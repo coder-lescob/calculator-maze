@@ -3,10 +3,17 @@
 #include "math.h"
 #include "texture_loader.h"
 #include "rendering.h"
+#include <assert.h>
 #include <string.h>
 
 #include <stdio.h>
 #include <stdlib.h>
+
+// lookup table
+DepthToY_Lookup depth_y_lookup = {
+    .offset_y = 0xffff, // extremly unlikly
+    .table    = {0},
+};
 
 // Yes I actually know that much
 #define PI 3.141592653589793f
@@ -17,8 +24,8 @@ HitInfo raycast_single_ray(Ray ray, Maze *maze) {
     // thank to https://lodev.org/cgtutor/raycasting.html
     // for the algorithms
     
-    #define FLOOR_u16(F) (uint16_t)F
-    eadk_point_t map_pos = { FLOOR_u16(ray.origine.x), FLOOR_u16(ray.origine.y) };
+    #define FLOOR_i16(F) (int16_t)F
+    point_t map_pos = { FLOOR_i16(ray.origine.x), FLOOR_i16(ray.origine.y) };
 
     int8_t step_x, step_y;
     float side_distance_x, side_distance_y;
@@ -87,7 +94,7 @@ HitInfo raycast_single_ray(Ray ray, Maze *maze) {
             hit_side         = HORIZONTAL;
         }
 
-        if (map_pos.x >= maze->width || map_pos.y >= maze->height) {
+        if (map_pos.x >= maze->width || map_pos.y >= maze->height || map_pos.x < 0 || map_pos.y < 0) {
             break;
         }
 
@@ -113,14 +120,16 @@ HitInfo raycast_single_ray(Ray ray, Maze *maze) {
 
     // x coordinate on the texture use bilinear interpolation
     int tex_x = (int)(wall_x * (float)TEXTURE_WIDTH);
-    if(hit_side == VERTICAL   && ray.direction.x > 0) tex_x = TEXTURE_WIDTH - tex_x - 1;
-    if(hit_side == HORIZONTAL && ray.direction.y < 0) tex_x = TEXTURE_WIDTH - tex_x - 1;
+    if (hit_side == VERTICAL   && ray.direction.x > 0) tex_x = TEXTURE_WIDTH - tex_x - 1;
+    if (hit_side == HORIZONTAL && ray.direction.y < 0) tex_x = TEXTURE_WIDTH - tex_x - 1;
 
     return (HitInfo) {
         .distance = distance,
         .side     = hit_side,
         .block_type = block_type,
         .texture_x  = tex_x & (TEXTURE_WIDTH - 1),
+        .hit_x      = wall_x,
+        .map_pos    = map_pos,
     };
 }
 
@@ -141,7 +150,7 @@ static color_t *map_block_type_to_texture(uint8_t block_type, textures_t texture
  * draw the vertical slice of a wall
  * @warning assums vertical_buffer and vertical_depth are initialized properly
  */
-static void draw_wall_slice(color_t *vertical_buffer, float *vertical_depth, HitInfo hitInfo, int16_t offset_y, textures_t textures) {
+static void draw_wall_slice(color_t *vertical_buffer, float *vertical_depth, Ray ray, HitInfo hitInfo, int16_t offset_y, textures_t textures) {
     if (vertical_buffer == NULL || vertical_depth == NULL) {
         return;
     }
@@ -185,6 +194,82 @@ static void draw_wall_slice(color_t *vertical_buffer, float *vertical_depth, Hit
         vertical_buffer[y] = color;
         vertical_depth [y] = hitInfo.distance;
     }
+
+    // thanks to https://lodev.org/cgtutor/raycasting2.html
+    if (offset_y != depth_y_lookup.offset_y) {
+        // shall refresh the lookup table
+        for (int16_t y = SCREEN_HEIGHT/2; y < SCREEN_HEIGHT; y++) {
+            depth_y_lookup.table[y-SCREEN_HEIGHT/2] = (offset_y + SCREEN_HEIGHT/2) / (float)(y - SCREEN_HEIGHT/2);
+        }
+
+        depth_y_lookup.offset_y = offset_y;
+    }
+
+    // draw the floor
+    float floor_x_wall, floor_y_wall;
+
+    // 4 different wall directions possible
+    if (hitInfo.side == VERTICAL && ray.direction.x > 0)
+    {
+        floor_x_wall = hitInfo.map_pos.x;
+        floor_y_wall = hitInfo.map_pos.y + hitInfo.hit_x;
+    }
+    else if (hitInfo.side == VERTICAL && ray.direction.x < 0)
+    {
+        floor_x_wall = hitInfo.map_pos.x + 1.0f;
+        floor_y_wall = hitInfo.map_pos.y + hitInfo.hit_x;
+    }
+    else if (hitInfo.side == HORIZONTAL && ray.direction.y > 0)
+    {
+        floor_x_wall = hitInfo.map_pos.x + hitInfo.hit_x;
+        floor_y_wall = hitInfo.map_pos.y;
+    }
+    else
+    {
+        floor_x_wall = hitInfo.map_pos.x + hitInfo.hit_x;
+        floor_y_wall = hitInfo.map_pos.y + 1.0f;
+    }
+
+    // set the first texture for the floor
+    color_t *floor_texture = textures.wall_textures + TEXTURE_SIZE*6;
+
+    if (draw_end < 0) draw_end = SCREEN_HEIGHT;
+    float inv_dst = 1 / hitInfo.distance;
+
+    for (int16_t y = draw_end+1; y < SCREEN_HEIGHT; y++) {
+        // current distance to pixel
+        float current_distance = depth_y_lookup.table[y-SCREEN_HEIGHT/2];
+
+        // if the depth of this pixel is already less don't render there is some thing in front
+        if (vertical_depth[y] < current_distance) {
+            continue;
+        }
+
+        // compute the current weight (distance in range [0, wall_distance])
+        float weight = current_distance * inv_dst;
+
+        // find the texture pos in range [0, 1]
+        Vec2 current_floor_pos = {
+            weight * floor_x_wall + (1.0f - weight) * ray.origine.x,
+            weight * floor_y_wall + (1.0f - weight) * ray.origine.y,
+        };
+
+        float fx = current_floor_pos.x - floor(current_floor_pos.x);
+        float fy = current_floor_pos.y - floor(current_floor_pos.y);
+
+        // change from range [0, 1] to [0, TEXTURE_WIDTH] and [0, TEXTURE_HEIGHT]
+        int16_t texture_x = fx * TEXTURE_WIDTH;
+        int16_t texture_y = fy * TEXTURE_HEIGHT;
+        
+        // texture laid down on the side
+        vertical_buffer[y] = floor_texture[texture_x * TEXTURE_HEIGHT + texture_y];
+        vertical_depth [y] = current_distance;
+
+        if (y + 1 >= SCREEN_HEIGHT) break;
+
+        vertical_buffer[y + 1] = floor_texture[texture_x * TEXTURE_HEIGHT + texture_y];
+        vertical_depth [y + 1] = current_distance;
+    }
 }
 
 static void draw_entity_slice(color_t *vertical_buffer, float *vertical_depth, EntitySlice entity, int16_t offset_y, textures_t textures) {
@@ -192,14 +277,14 @@ static void draw_entity_slice(color_t *vertical_buffer, float *vertical_depth, E
         return;
     }
 
-    // compute the center of the entity on the screen
-    int16_t entity_center = SCREEN_HEIGHT / 2 + offset_y / entity.dst;
-
     // compute entity box
     int16_t entity_height = abs((int16_t)(SCREEN_HEIGHT / (1.2f * entity.dst)));
+    
+    // compute the rate of change of the entity_texture_y (needed to plant the entitiy's feet on the ground)
+    float delta_entity_texture_y = textures.entities_tex_h / (float)entity_height;
 
     // for the entity to be on the ground
-    int16_t entity_draw_end_y   = entity_center + SCREEN_HEIGHT / (2 * entity.dst);
+    int16_t entity_draw_end_y   = (SCREEN_HEIGHT/2) + (SCREEN_HEIGHT/2 + offset_y)/(entity.dst) + delta_entity_texture_y * 3;
     int16_t entity_high_y       = entity_draw_end_y - entity_height;
     int16_t entity_draw_start_y = entity_high_y;
 
@@ -207,9 +292,8 @@ static void draw_entity_slice(color_t *vertical_buffer, float *vertical_depth, E
     if (entity_draw_start_y < 0) entity_draw_start_y = 0;
     if (entity_draw_end_y > SCREEN_HEIGHT) entity_draw_end_y = SCREEN_HEIGHT;
 
-    // compute texture coords
-    float delta_entity_texture_y = textures.entities_tex_h / (float)entity_height;
-    float entity_texture_y       = (entity_draw_start_y - entity_high_y) * delta_entity_texture_y;
+    // compute stating texture y coord
+    float entity_texture_y = (entity_draw_start_y - entity_high_y) * delta_entity_texture_y;
 
     for (int16_t y = entity_draw_start_y; y < entity_draw_end_y; y++, entity_texture_y += delta_entity_texture_y) {
         // check if there is no thing in front of the entity
@@ -251,13 +335,14 @@ static void render_vertical_slice_to_screen(color_t *vertical_buffer, uint16_t x
     );
 }
 
+/**
+ * clear both vertical buffers the color and depth channels
+ * @note any null will be ignored
+ */
 static void clear_vertical_buffers(color_t *vertical_buffer, float *vertical_depth) {
-    if (vertical_buffer != NULL)
-        memset(vertical_buffer, 0x00, SCREEN_HEIGHT * sizeof(color_t));
-
-    if (vertical_depth == NULL) return;
-
+    if (vertical_buffer == NULL || vertical_depth == NULL) return;
     for (uint16_t i = 0; i < SCREEN_HEIGHT; i++) {
+        vertical_buffer[i] = 0;
         vertical_depth[i] = INFINITY;
     }
 }
@@ -284,14 +369,16 @@ void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_enti
             player.dir.y + player.plane.y * camera_x
         };
 
+        Ray ray = (Ray) { player.pos, dir };
+
         // cast the ray
-        HitInfo hitInfo = raycast_single_ray((Ray) { player.pos, dir }, maze);
+        HitInfo hitInfo = raycast_single_ray(ray, maze);
 
         /**
          * TODO: render floor and sky
          */
 
-        draw_wall_slice(vertical_buffer, vertical_depth, hitInfo, 20, textures);
+        draw_wall_slice(vertical_buffer, vertical_depth, ray, hitInfo, 20, textures);
 
         // recompute wall_enter for caching
         int16_t wall_center = SCREEN_HEIGHT / 2 + 20 / hitInfo.distance;
@@ -322,7 +409,8 @@ void get_entities_depth(Player player, EntityDepth *entities_depth, Entity *enti
         entities_depth[i] = (EntityDepth) {
             .min_depth = INFINITY,
             .num_entities = 0,
-            .entities = NULL,
+            .capacity = 1,
+            .entities = calloc(1, sizeof(EntitySlice)),
         };
     }
 
@@ -388,9 +476,16 @@ void get_entities_depth(Player player, EntityDepth *entities_depth, Entity *enti
 void push_entity_to_depth(EntityDepth *depth, EntitySlice slice) {
     // avoid overflowing the number of entities
     if (depth->num_entities == 255) return;
+    if (depth->num_entities + 1 <= depth->capacity) {
+        goto directly_push_entity;
+    }
+
+    // the new capacity
+    uint16_t new_capacity = depth->capacity * 2;
+    if (new_capacity > 255) new_capacity = 255;
 
     // reallocate the entity buffer
-    EntitySlice *new_entities = realloc(depth->entities, (depth->num_entities + 1) * sizeof(EntitySlice));
+    EntitySlice *new_entities = realloc(depth->entities, new_capacity * sizeof(EntitySlice));
 
     // allocation failed
     if (new_entities == NULL) return;
@@ -398,6 +493,9 @@ void push_entity_to_depth(EntityDepth *depth, EntitySlice slice) {
     // put the entity array back in the entity depth struct
     // and push the entity
     depth->entities = new_entities;
+    depth->capacity = new_capacity;
+
+directly_push_entity:
     depth->entities[depth->num_entities++] = slice;
 
     if (slice.dst < depth->min_depth) {

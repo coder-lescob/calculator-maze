@@ -91,7 +91,7 @@ int main(void) {
         // render fps
         char msg[50] = {0};
         snprintf(msg, 49, "FPS: %d", (uint16_t)((dt > 0)? 1 / dt : 100000.0f));
-        draw_string((eadk_point_t) { 0, 0 }, msg);
+        draw_string((point_t) { 0, 0 }, msg);
 
         swap_buffer();
 

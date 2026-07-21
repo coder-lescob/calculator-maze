@@ -9,14 +9,17 @@
 #include <eadk.h>
 
 // constants
-static const uint16_t SCREEN_WIDTH  = EADK_SCREEN_WIDTH;
-static const uint16_t SCREEN_HEIGHT = EADK_SCREEN_HEIGHT;
-static const uint16_t LITTE_FONT_HEIGHT = 14; // 14px
+#define SCREEN_WIDTH  EADK_SCREEN_WIDTH
+#define SCREEN_HEIGHT EADK_SCREEN_HEIGHT
+#define LITTE_FONT_HEIGHT 14 // 14px
 
 // other types
-typedef eadk_point_t point_t;
 typedef eadk_rect_t rect_t;
 typedef eadk_color_t color_t;
+
+typedef struct {
+    int16_t x, y;
+} point_t;
 
 #else
 #error PLATFORM NOT SUPPORTED

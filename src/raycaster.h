@@ -23,6 +23,9 @@ typedef struct {
 
     uint8_t block_type;
     uint8_t texture_x;
+
+    float hit_x;
+    point_t map_pos;
 } HitInfo;
 
 typedef struct {
@@ -34,8 +37,14 @@ typedef struct {
 typedef struct {
     float min_depth; // cache the min depth for extra speed
     uint8_t num_entities; // I wont allow more than 255 entities to be viewed through
+    uint8_t capacity;
     EntitySlice *entities;
 } EntityDepth;
+
+typedef struct {
+    int16_t offset_y;
+    float   table[SCREEN_HEIGHT/2];
+} DepthToY_Lookup;
 
 /**
  * shoots a single ray to figure out what is in this direction.
