@@ -85,7 +85,7 @@ int main(void) {
             entity_move(&entities[i], dt, &player);
         }
 
-        rect_t ignore[1] = {
+        rect_t rects[1] = {
             (rect_t) { SCREEN_WIDTH-TEXTURE_WIDTH, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT },
         };
 
@@ -100,7 +100,7 @@ int main(void) {
 
         LayeredTextures layers = {
             .num_rects = 1,
-            .rects = ignore,
+            .rects = rects,
             .pixels_by_rect = tex,
             .on_the_side = on_the_side,
             .layers      = rect_layers
