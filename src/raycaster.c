@@ -237,6 +237,12 @@ static void draw_wall_slice(color_t *vertical_buffer, float *vertical_depth, Ray
     if (draw_end < 0) draw_end = SCREEN_HEIGHT;
     fixed16_t inv_dst = float_to_fixed16(1 / hitInfo.distance);
 
+    // constants for speed
+    fixed16_t origine_x = float_to_fixed16(ray.origine.x);
+    fixed16_t origine_y = float_to_fixed16(ray.origine.y);
+    fixed16_t dx = floor_x_wall - origine_x;
+    fixed16_t dy = floor_y_wall - origine_y;
+
     for (int16_t y = draw_end+1; y < SCREEN_HEIGHT; y++) {
         // current distance to pixel
         fixed16_t current_distance = depth_y_lookup.table[y-SCREEN_HEIGHT/2];
@@ -250,8 +256,8 @@ static void draw_wall_slice(color_t *vertical_buffer, float *vertical_depth, Ray
         fixed16_t weight = fixed16_mul(current_distance, inv_dst);
 
         // find the texture pos in range [0, 1]
-        fixed16_t current_floor_pos_x = fixed16_mul(weight, floor_x_wall) + fixed16_mul((INT_TO_FIXED16(1) - weight), float_to_fixed16(ray.origine.x));
-        fixed16_t current_floor_pos_y = fixed16_mul(weight, floor_y_wall) + fixed16_mul((INT_TO_FIXED16(1) - weight), float_to_fixed16(ray.origine.y));
+        fixed16_t current_floor_pos_x = origine_x + fixed16_mul(weight, dx);
+        fixed16_t current_floor_pos_y = origine_y + fixed16_mul(weight, dy);
 
         // change from range [0, 1] to [0, TEXTURE_WIDTH] and [0, TEXTURE_HEIGHT]
         int32_t texture_x = FIXED16_TO_INT(fixed16_mul(FRAC_f16(current_floor_pos_x), INT_TO_FIXED16(TEXTURE_WIDTH)));
