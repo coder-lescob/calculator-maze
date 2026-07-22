@@ -86,16 +86,28 @@ int main(void) {
         }
 
         rect_t ignore[1] = {
-            (rect_t) { SCREEN_WIDTH-50, 0, 50, 50 }
+            (rect_t) { SCREEN_WIDTH-TEXTURE_WIDTH, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT },
         };
 
-        AreasToIgnore ignore_rects = {
-            .num_ignore = 1,
-            .ignore_rects = ignore,
+        color_t *tex[1] = {
+            textures.wall_textures,
+        };
+
+        bool on_the_side[1] = { true, };
+        int16_t rect_layers[1] = {
+            INT16_MAX,
+        };
+
+        LayeredTextures layers = {
+            .num_rects = 1,
+            .rects = ignore,
+            .pixels_by_rect = tex,
+            .on_the_side = on_the_side,
+            .layers      = rect_layers
         };
 
         // render the terain
-        raycast_render(player, &maze, entities, sizeof(entities) / sizeof(Entity), textures, ignore_rects);
+        raycast_render(player, &maze, entities, sizeof(entities) / sizeof(Entity), textures, layers);
         
         // render fps
         char msg[50] = {0};

@@ -339,29 +339,44 @@ static inline bool in_rect(rect_t rect, uint16_t x, uint16_t y) {
     return x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height;
 }
 
-static bool in_any_rect(uint16_t num_rects, rect_t *rects, uint16_t x, uint16_t y) {
-    for (uint16_t i = 0; i < num_rects; i++) {
-        if (!in_rect(rects[i], x, y)) continue;
-        return true;
+static int16_t in_any_rect(LayeredTextures layers, uint16_t x, uint16_t y) {
+    for (uint16_t i = 0; i < layers.num_rects; i++) {
+        if (!in_rect(layers.rects[i], x, y)) continue;
+        return i;
     }
-    return false;
+    return -1;
 }
 
 /**
  * clear both vertical buffers the color and depth channels
  * @note any null will be ignored
  */
-static void clear_vertical_buffers(color_t *vertical_buffer, float *vertical_depth, uint16_t x, AreasToIgnore ignore_areas) {
+static void clear_vertical_buffers(color_t *vertical_buffer, float *vertical_depth, uint16_t x, LayeredTextures layers) {
     if (vertical_buffer == NULL || vertical_depth == NULL) return;
-    for (uint16_t y = 0; y < SCREEN_HEIGHT; y++) {
-        vertical_buffer[y] = 0;
 
-        // If any rect is marked as ignore then it shall be ignored (nothing is less than -INFINITY)
-        vertical_depth[y] = (in_any_rect(ignore_areas.num_ignore, ignore_areas.ignore_rects, x, y))? -INFINITY : INFINITY;
+    for (uint16_t y = 0; y < SCREEN_HEIGHT; y++) {
+        int16_t i = in_any_rect(layers, x, y);
+
+        if (i == -1) {
+            vertical_buffer[y] = 0;
+            vertical_depth[y] = INFINITY;
+            continue;
+        }
+        
+        // local xy
+        uint16_t local_x = x - layers.rects[i].x;
+        uint16_t local_y = y - layers.rects[i].y;
+        uint16_t pix_index = (layers.on_the_side[i])? 
+                    local_x * layers.rects[i].height + local_y 
+                  : local_x + local_y * layers.rects[i].width;
+
+        // depth set to negative layer
+        vertical_depth[y] = -layers.layers[i];
+        vertical_buffer[y] = layers.pixels_by_rect[i][pix_index];
     }
 }
 
-void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_entities, textures_t textures, AreasToIgnore ignore_areas) {
+void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_entities, textures_t textures, LayeredTextures layers) {
 
     // compute the depth and the slice of all entities
     EntityDepth entities_depth[SCREEN_WIDTH];
@@ -372,7 +387,7 @@ void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_enti
 
     // raycast
     for (uint16_t i = 0; i < SCREEN_WIDTH; i++) {
-        clear_vertical_buffers(vertical_buffer, vertical_depth, i, ignore_areas);
+        clear_vertical_buffers(vertical_buffer, vertical_depth, i, layers);
 
         // x-coordinate in camera space
         float camera_x = 2 * i / (float)SCREEN_WIDTH - 1; 

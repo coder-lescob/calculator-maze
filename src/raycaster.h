@@ -50,11 +50,16 @@ typedef struct {
     float   table[SCREEN_HEIGHT/2];
 } DepthToY_Lookup;
 
-/// @brief where the renderer shall not render
+/** 
+ * @brief where the renderer shall render a specific texture on top
+*/
 typedef struct {
-    uint16_t num_ignore;
-    rect_t  *ignore_rects;
-} AreasToIgnore;
+    uint16_t num_rects;
+    rect_t  *rects;
+    color_t **pixels_by_rect;
+    bool    *on_the_side;
+    int16_t *layers; // layer -32768 behind everything, any negative layer indicate a depth of rendering
+} LayeredTextures;
 
 /**
  * shoots a single ray to figure out what is in this direction.
@@ -64,7 +69,7 @@ HitInfo raycast_single_ray(Ray ray, Maze *maze);
 /**
  * renders a frame by shoot many rays.
  */
-void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_entities, textures_t textures, AreasToIgnore ignore_areas);
+void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_entities, textures_t textures, LayeredTextures layers);
 
 /**
  * creates an entity depth buffer where the closesed entity is stored for each slice
