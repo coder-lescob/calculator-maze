@@ -335,19 +335,33 @@ static void render_vertical_slice_to_screen(color_t *vertical_buffer, uint16_t x
     );
 }
 
+static inline bool in_rect(rect_t rect, uint16_t x, uint16_t y) {
+    return x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height;
+}
+
+static bool in_any_rect(uint16_t num_rects, rect_t *rects, uint16_t x, uint16_t y) {
+    for (uint16_t i = 0; i < num_rects; i++) {
+        if (!in_rect(rects[i], x, y)) continue;
+        return true;
+    }
+    return false;
+}
+
 /**
  * clear both vertical buffers the color and depth channels
  * @note any null will be ignored
  */
-static void clear_vertical_buffers(color_t *vertical_buffer, float *vertical_depth) {
+static void clear_vertical_buffers(color_t *vertical_buffer, float *vertical_depth, uint16_t x, AreasToIgnore ignore_areas) {
     if (vertical_buffer == NULL || vertical_depth == NULL) return;
-    for (uint16_t i = 0; i < SCREEN_HEIGHT; i++) {
-        vertical_buffer[i] = 0;
-        vertical_depth[i] = INFINITY;
+    for (uint16_t y = 0; y < SCREEN_HEIGHT; y++) {
+        vertical_buffer[y] = 0;
+
+        // If any rect is marked as ignore then it shall be ignored (nothing is less than -INFINITY)
+        vertical_depth[y] = (in_any_rect(ignore_areas.num_ignore, ignore_areas.ignore_rects, x, y))? -INFINITY : INFINITY;
     }
 }
 
-void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_entities, textures_t textures) {
+void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_entities, textures_t textures, AreasToIgnore ignore_areas) {
 
     // compute the depth and the slice of all entities
     EntityDepth entities_depth[SCREEN_WIDTH];
@@ -357,8 +371,8 @@ void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_enti
     color_t vertical_buffer[SCREEN_HEIGHT];
 
     // raycast
-    for (int i = 0; i < SCREEN_WIDTH; i++) {
-        clear_vertical_buffers(vertical_buffer, vertical_depth);
+    for (uint16_t i = 0; i < SCREEN_WIDTH; i++) {
+        clear_vertical_buffers(vertical_buffer, vertical_depth, i, ignore_areas);
 
         // x-coordinate in camera space
         float camera_x = 2 * i / (float)SCREEN_WIDTH - 1; 

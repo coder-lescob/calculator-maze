@@ -85,8 +85,17 @@ int main(void) {
             entity_move(&entities[i], dt, &player);
         }
 
+        rect_t ignore[1] = {
+            (rect_t) { SCREEN_WIDTH-50, 0, 50, 50 }
+        };
+
+        AreasToIgnore ignore_rects = {
+            .num_ignore = 1,
+            .ignore_rects = ignore,
+        };
+
         // render the terain
-        raycast_render(player, &maze, entities, sizeof(entities) / sizeof(Entity), textures);
+        raycast_render(player, &maze, entities, sizeof(entities) / sizeof(Entity), textures, ignore_rects);
         
         // render fps
         char msg[50] = {0};

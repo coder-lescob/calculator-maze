@@ -41,10 +41,20 @@ typedef struct {
     EntitySlice *entities;
 } EntityDepth;
 
+/**
+ * @brief a lookup table to avoid doing too much divisons
+ * @todo use fixed points
+*/
 typedef struct {
     int16_t offset_y;
     float   table[SCREEN_HEIGHT/2];
 } DepthToY_Lookup;
+
+/// @brief where the renderer shall not render
+typedef struct {
+    uint16_t num_ignore;
+    rect_t  *ignore_rects;
+} AreasToIgnore;
 
 /**
  * shoots a single ray to figure out what is in this direction.
@@ -54,7 +64,7 @@ HitInfo raycast_single_ray(Ray ray, Maze *maze);
 /**
  * renders a frame by shoot many rays.
  */
-void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_entities, textures_t textures);
+void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_entities, textures_t textures, AreasToIgnore ignore_areas);
 
 /**
  * creates an entity depth buffer where the closesed entity is stored for each slice
