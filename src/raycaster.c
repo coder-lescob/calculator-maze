@@ -3,6 +3,7 @@
 #include "math.h"
 #include "texture_loader.h"
 #include "rendering.h"
+#include "fixed_points.h"
 #include <assert.h>
 #include <string.h>
 
@@ -198,77 +199,67 @@ static void draw_wall_slice(color_t *vertical_buffer, float *vertical_depth, Ray
     // thanks to https://lodev.org/cgtutor/raycasting2.html
     if (offset_y != depth_y_lookup.offset_y) {
         // shall refresh the lookup table
-        for (int16_t y = SCREEN_HEIGHT/2; y < SCREEN_HEIGHT; y++) {
-            depth_y_lookup.table[y-SCREEN_HEIGHT/2] = (offset_y + SCREEN_HEIGHT/2) / (float)(y - SCREEN_HEIGHT/2);
+        for (int16_t y = SCREEN_HEIGHT/2+1; y < SCREEN_HEIGHT; y++) {
+            depth_y_lookup.table[y-SCREEN_HEIGHT/2] = float_to_fixed16((offset_y + SCREEN_HEIGHT/2) / (float)(y - SCREEN_HEIGHT/2));
         }
 
         depth_y_lookup.offset_y = offset_y;
     }
 
     // draw the floor
-    float floor_x_wall, floor_y_wall;
+    fixed16_t floor_x_wall, floor_y_wall;
 
     // 4 different wall directions possible
     if (hitInfo.side == VERTICAL && ray.direction.x > 0)
     {
-        floor_x_wall = hitInfo.map_pos.x;
-        floor_y_wall = hitInfo.map_pos.y + hitInfo.hit_x;
+        floor_x_wall = INT_TO_FIXED16(hitInfo.map_pos.x);
+        floor_y_wall = INT_TO_FIXED16(hitInfo.map_pos.y) + float_to_fixed16(hitInfo.hit_x);
     }
     else if (hitInfo.side == VERTICAL && ray.direction.x < 0)
     {
-        floor_x_wall = hitInfo.map_pos.x + 1.0f;
-        floor_y_wall = hitInfo.map_pos.y + hitInfo.hit_x;
+        floor_x_wall = INT_TO_FIXED16(hitInfo.map_pos.x + 1);
+        floor_y_wall = INT_TO_FIXED16(hitInfo.map_pos.y) + float_to_fixed16(hitInfo.hit_x);
     }
     else if (hitInfo.side == HORIZONTAL && ray.direction.y > 0)
     {
-        floor_x_wall = hitInfo.map_pos.x + hitInfo.hit_x;
-        floor_y_wall = hitInfo.map_pos.y;
+        floor_x_wall = INT_TO_FIXED16(hitInfo.map_pos.x) + float_to_fixed16(hitInfo.hit_x);
+        floor_y_wall = INT_TO_FIXED16(hitInfo.map_pos.y);
     }
     else
     {
-        floor_x_wall = hitInfo.map_pos.x + hitInfo.hit_x;
-        floor_y_wall = hitInfo.map_pos.y + 1.0f;
+        floor_x_wall = INT_TO_FIXED16(hitInfo.map_pos.x) + float_to_fixed16(hitInfo.hit_x);
+        floor_y_wall = INT_TO_FIXED16(hitInfo.map_pos.y + 1);
     }
 
     // set the first texture for the floor
     color_t *floor_texture = textures.wall_textures + TEXTURE_SIZE*6;
 
     if (draw_end < 0) draw_end = SCREEN_HEIGHT;
-    float inv_dst = 1 / hitInfo.distance;
+    fixed16_t inv_dst = float_to_fixed16(1 / hitInfo.distance);
 
     for (int16_t y = draw_end+1; y < SCREEN_HEIGHT; y++) {
         // current distance to pixel
-        float current_distance = depth_y_lookup.table[y-SCREEN_HEIGHT/2];
+        fixed16_t current_distance = depth_y_lookup.table[y-SCREEN_HEIGHT/2];
 
         // if the depth of this pixel is already less don't render there is some thing in front
-        if (vertical_depth[y] < current_distance) {
+        if (vertical_depth[y] < fixed16_to_float(current_distance)) {
             continue;
         }
 
         // compute the current weight (distance in range [0, wall_distance])
-        float weight = current_distance * inv_dst;
+        fixed16_t weight = fixed16_mul(current_distance, inv_dst);
 
         // find the texture pos in range [0, 1]
-        Vec2 current_floor_pos = {
-            weight * floor_x_wall + (1.0f - weight) * ray.origine.x,
-            weight * floor_y_wall + (1.0f - weight) * ray.origine.y,
-        };
-
-        float fx = current_floor_pos.x - floor(current_floor_pos.x);
-        float fy = current_floor_pos.y - floor(current_floor_pos.y);
+        fixed16_t current_floor_pos_x = fixed16_mul(weight, floor_x_wall) + fixed16_mul((INT_TO_FIXED16(1) - weight), float_to_fixed16(ray.origine.x));
+        fixed16_t current_floor_pos_y = fixed16_mul(weight, floor_y_wall) + fixed16_mul((INT_TO_FIXED16(1) - weight), float_to_fixed16(ray.origine.y));
 
         // change from range [0, 1] to [0, TEXTURE_WIDTH] and [0, TEXTURE_HEIGHT]
-        int16_t texture_x = fx * TEXTURE_WIDTH;
-        int16_t texture_y = fy * TEXTURE_HEIGHT;
+        int32_t texture_x = FIXED16_TO_INT(fixed16_mul(FRAC_f16(current_floor_pos_x), INT_TO_FIXED16(TEXTURE_WIDTH)));
+        int32_t texture_y = FIXED16_TO_INT(fixed16_mul(FRAC_f16(current_floor_pos_y), INT_TO_FIXED16(TEXTURE_HEIGHT)));
         
         // texture laid down on the side
         vertical_buffer[y] = floor_texture[texture_x * TEXTURE_HEIGHT + texture_y];
-        vertical_depth [y] = current_distance;
-
-        if (y + 1 >= SCREEN_HEIGHT) break;
-
-        vertical_buffer[y + 1] = floor_texture[texture_x * TEXTURE_HEIGHT + texture_y];
-        vertical_depth [y + 1] = current_distance;
+        vertical_depth [y] = fixed16_to_float(current_distance);
     }
 }
 
@@ -363,16 +354,23 @@ static void clear_vertical_buffers(color_t *vertical_buffer, float *vertical_dep
             continue;
         }
         
-        // local xy
-        uint16_t local_x = x - layers.rects[i].x;
-        uint16_t local_y = y - layers.rects[i].y;
-        uint16_t pix_index = (layers.on_the_side[i])? 
-                    local_x * layers.rects[i].height + local_y 
-                  : local_x + local_y * layers.rects[i].width;
+        if (layers.pixels_by_rect[i] == NULL) {
+            vertical_buffer[y] = 0;
+        }
+        else {
+            // local xy
+            uint16_t local_x = x - layers.rects[i].x;
+            uint16_t local_y = y - layers.rects[i].y;
+            uint16_t pix_index = (layers.on_the_side[i])? 
+                        local_x * layers.rects[i].height + local_y 
+                    : local_x + local_y * layers.rects[i].width;
+
+            // set color
+            vertical_buffer[y] = layers.pixels_by_rect[i][pix_index];
+        }
 
         // depth set to negative layer
         vertical_depth[y] = -layers.layers[i];
-        vertical_buffer[y] = layers.pixels_by_rect[i][pix_index];
     }
 }
 
@@ -403,10 +401,7 @@ void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_enti
         // cast the ray
         HitInfo hitInfo = raycast_single_ray(ray, maze);
 
-        /**
-         * TODO: render floor and sky
-         */
-
+        // draw the wall and the floor
         draw_wall_slice(vertical_buffer, vertical_depth, ray, hitInfo, 20, textures);
 
         // recompute wall_enter for caching

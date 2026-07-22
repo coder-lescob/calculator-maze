@@ -16,8 +16,9 @@
 #include "maze.h"
 #include "player.h"
 #include "entity.h"
+#include "fixed_points.h"
 
-#define VERSION "0.4.8"
+#define VERSION "0.5.0"
 
 // Yes I actually know that much
 #define PI 3.141592653589793f
@@ -31,7 +32,6 @@ const uint32_t eadk_api_level  __attribute__((section(".rodata.eadk_api_level"))
 #endif
 
 int main(void) {
-    
     create_renderer();
     
     keyboard_t keyboard = create_keyboard();
@@ -85,25 +85,12 @@ int main(void) {
             entity_move(&entities[i], dt, &player);
         }
 
-        rect_t rects[1] = {
-            (rect_t) { SCREEN_WIDTH-TEXTURE_WIDTH, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT },
-        };
-
-        color_t *tex[1] = {
-            textures.wall_textures,
-        };
-
-        bool on_the_side[1] = { true, };
-        int16_t rect_layers[1] = {
-            INT16_MAX,
-        };
-
         LayeredTextures layers = {
-            .num_rects = 1,
-            .rects = rects,
-            .pixels_by_rect = tex,
-            .on_the_side = on_the_side,
-            .layers      = rect_layers
+            .num_rects = 0,
+            .rects = NULL,
+            .pixels_by_rect = NULL,
+            .on_the_side = NULL,
+            .layers      = NULL,
         };
 
         // render the terain

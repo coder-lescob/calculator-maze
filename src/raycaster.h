@@ -5,6 +5,7 @@
 #include "maze.h"
 #include "entity.h"
 #include "texture_loader.h"
+#include "fixed_points.h"
 
 typedef struct {
     Vec2 origine;
@@ -47,7 +48,7 @@ typedef struct {
 */
 typedef struct {
     int16_t offset_y;
-    float   table[SCREEN_HEIGHT/2];
+    fixed16_t table[SCREEN_HEIGHT/2];
 } DepthToY_Lookup;
 
 /** 
