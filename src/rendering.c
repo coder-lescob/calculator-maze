@@ -79,10 +79,10 @@ void draw_string(point_t point, const char *str) {
 
 /**
  * swap the backbuffer with the screen buffer
- * @note on the calculator it only waits for vblank
+ * @note on the calculator it does nothing because it has no back buffer
  */
 void swap_buffer() {
-    eadk_display_wait_for_vblank();
+    //eadk_display_wait_for_vblank();
 }
 
 #else

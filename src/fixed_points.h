@@ -28,4 +28,9 @@ float fixed16_to_float(fixed16_t x);
  */
 fixed16_t fixed16_mul(fixed16_t a, fixed16_t b);
 
+/**
+ * divide two fixed points
+ */
+fixed16_t fixed16_div(fixed16_t a, fixed16_t b);
+
 #endif

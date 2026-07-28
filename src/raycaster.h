@@ -7,17 +7,24 @@
 #include "texture_loader.h"
 #include "fixed_points.h"
 
+/**
+ * @brief this is the ray structure a point where the ray is shot and direction in which it has been
+ */
 typedef struct {
     Vec2 origine;
     Vec2 direction;
 } Ray;
 
+/// @brief a side is an uint8_t it would be wastful to store an uint32_t
 typedef uint8_t Side;
 
 #define UNDEFINED_SIDE 2
 #define VERTICAL 0
 #define HORIZONTAL 1
 
+/**
+ * @brief a structure to store all the infos about an hit
+ */
 typedef struct {
     float distance;
     Side side;
@@ -44,12 +51,11 @@ typedef struct {
 
 /**
  * @brief a lookup table to avoid doing too much divisons
- * @todo use fixed points
 */
 typedef struct {
     int16_t offset_y;
     fixed16_t table[SCREEN_HEIGHT/2];
-} DepthToY_Lookup;
+} Y_ToDepthLookup;
 
 /** 
  * @brief where the renderer shall render a specific texture on top

@@ -61,15 +61,18 @@ int main(void) {
         last_time = get_time();
     }
 
+    // generate the maze and create the player object
     Maze maze = generate_maze(20, 20);
     Player player = new_player((Vec2) { 0.5f, 0.5f }, (Vec2) { 1, 0 }, PI/3 /* 60° */);
 
+    // spawn the entities
     Entity entities[] = {
         (Entity) { .entity_type = 1, .pos = (Vec2) { 0.5f, 1.5f }},
         (Entity) { .entity_type = 1, .pos = (Vec2) { 1.5f, 0.5f }},
         (Entity) { .entity_type = 0, .pos = (Vec2) { 1.5f, 1.5f }},
     };
 
+    // game loop
     while (true) {
         keyboard_poll(&keyboard);
 
