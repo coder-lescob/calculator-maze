@@ -44,7 +44,7 @@ typedef struct {
 
 typedef struct {
     float min_depth; // cache the min depth for extra speed
-    uint8_t num_entities; // I wont allow more than 255 entities to be viewed through
+    uint8_t num_entities; // I won't allow more than 255 entities to be viewed through
     uint8_t capacity;
     EntitySlice *entities;
 } EntityDepth;

@@ -204,7 +204,7 @@ static void draw_wall_and_floor_slice(color_t *vertical_buffer, float *vertical_
         vertical_depth [y] = hitInfo.distance;
     }
 
-    // thanks to https://lodev.org/cgtutor/raycasting2.html
+    // thanks to https://lodev.org/cgtutor/raycasting2.html for the tip
     if (offset_y != depth_y_lookup.offset_y) {
         // shall refresh the lookup table
         for (int16_t y = SCREEN_HEIGHT/2+1; y < SCREEN_HEIGHT; y++) {
@@ -376,7 +376,7 @@ static void clear_vertical_buffers(color_t *vertical_buffer, float *vertical_dep
             uint16_t local_x = x - layers.rects[i].x;
             uint16_t local_y = y - layers.rects[i].y;
             uint16_t pix_index = (layers.on_the_side[i])? 
-                        local_x * layers.rects[i].height + local_y 
+                    local_x * layers.rects[i].height + local_y 
                     : local_x + local_y * layers.rects[i].width;
 
             // set color
@@ -394,11 +394,15 @@ void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_enti
     EntityDepth entities_depth[SCREEN_WIDTH];
     get_entities_depth(player, entities_depth, entities, num_entities, textures);
 
+    // I can't have an entire backbuffer for the whole screen
+    // so I keep a backbuffer per column since that is pretty
+    // good for a raycaster that renders per column
     float   vertical_depth [SCREEN_HEIGHT];
     color_t vertical_buffer[SCREEN_HEIGHT];
 
     // raycast
     for (uint16_t i = 0; i < SCREEN_WIDTH; i++) {
+        // clear the vertical buffers
         clear_vertical_buffers(vertical_buffer, vertical_depth, i, layers);
 
         // x-coordinate in camera space
@@ -417,20 +421,26 @@ void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_enti
         HitInfo hitInfo = raycast_single_ray(ray, maze);
 
         // draw the wall and the floor
-        draw_wall_and_floor_slice(vertical_buffer, vertical_depth, ray, hitInfo, 20, textures);
+        int16_t y_offset = 20; // offset Y of the player compared to the center of the screen
+        draw_wall_and_floor_slice(vertical_buffer, vertical_depth, ray, hitInfo, y_offset, textures);
 
         // recompute wall_enter for caching
-        int16_t wall_center = SCREEN_HEIGHT / 2 + 20 / hitInfo.distance;
+        int16_t wall_center = SCREEN_HEIGHT / 2 + y_offset / hitInfo.distance;
         if (wall_center < 0) wall_center = 0;
         if (wall_center >= SCREEN_HEIGHT) wall_center = SCREEN_HEIGHT;
 
         // If the closest entity is in front of the wall then draw all entities in that slice
-        if (vertical_depth[wall_center] > entities_depth[i].min_depth) {
-            for (uint16_t entity = 0; entity < entities_depth[i].num_entities; entity++) {
-                draw_entity_slice(vertical_buffer, vertical_depth, entities_depth[i].entities[entity], 0, textures);
-            }
+        if (vertical_depth[wall_center] <= entities_depth[i].min_depth) {
+            // avoid nesting using goto
+            goto ignore_rendering_entities;
         }
 
+        // draw all entities
+        for (uint16_t entity = 0; entity < entities_depth[i].num_entities; entity++) {
+            draw_entity_slice(vertical_buffer, vertical_depth, entities_depth[i].entities[entity], 0, textures);
+        }
+
+ignore_rendering_entities:
         // render the current slice (like swapping the buffers but I can't do that since I have not enought memory)
         render_vertical_slice_to_screen(vertical_buffer, i);
         
@@ -472,13 +482,13 @@ void get_entities_depth(Player player, EntityDepth *entities_depth, Entity *enti
             entities[i].pos.y - player.pos.y
         };
 
-        // transform sprite with the inverse camera matrix
+        // transform sprite with the inverse camera matrix:
         // [ planeX   dirX ] -1                                       [ dirY      -dirX ]
         // [               ]       =  1/(planeX*dirY-dirX*planeY) *   [                 ]
         // [ planeY   dirY ]                                          [ -planeY  planeX ]
 
         Vec2 transformed_pos = {
-            inv_det * ( player.dir.y * entity_pos.x   - player.dir.x   * entity_pos.y),
+            inv_det * ( player.dir.y   * entity_pos.x - player.dir.x   * entity_pos.y),
             inv_det * (-player.plane.y * entity_pos.x + player.plane.x * entity_pos.y), // Y is actually the depth
         };
         
@@ -527,7 +537,9 @@ void push_entity_to_depth(EntityDepth *depth, EntitySlice slice) {
         goto directly_push_entity;
     }
 
-    // the new capacity
+    // the buffer has not enough place so we need to allocate more space
+    // in order to have the perfect traidoff we reallocate about twice what we need
+    // so that we don't have to reallocate any time soon.
     uint16_t new_capacity = (depth->capacity + 1) * 2;
     if (new_capacity > 255) new_capacity = 255;
 
@@ -535,6 +547,7 @@ void push_entity_to_depth(EntityDepth *depth, EntitySlice slice) {
     EntitySlice *new_entities = realloc(depth->entities, new_capacity * sizeof(EntitySlice));
 
     // allocation failed
+    // TODO: unwind execution and show error screen
     if (new_entities == NULL) return;
 
     // put the entity array back in the entity depth struct
