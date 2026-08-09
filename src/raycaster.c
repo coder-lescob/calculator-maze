@@ -12,7 +12,7 @@
 
 // lookup table
 Y_ToDepthLookup depth_y_lookup = {
-    .offset_y = 0xffff, // extremly unlikly
+    .offset_y = 0xffff, // extremly unlikly for the first y offset
     .table    = {0},
 };
 
