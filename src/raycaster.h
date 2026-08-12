@@ -37,7 +37,7 @@ typedef struct {
 } HitInfo;
 
 typedef struct {
-    uint16_t type;
+    uint8_t type;
     uint8_t texture_x;
     float dst;
 } EntitySlice;

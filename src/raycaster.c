@@ -193,7 +193,7 @@ static void draw_wall_and_floor_slice(color_t *vertical_buffer, float *vertical_
         }
 
         // get the color from the texture with avoiding overflows
-        uint8_t tex_y = (uint8_t)texture_y & (TEXTURE_HEIGHT - 1);
+        uint8_t tex_y = (uint8_t)texture_y % TEXTURE_HEIGHT;
         color_t color = current_texture[hitInfo.texture_x * TEXTURE_HEIGHT + tex_y];
 
         // darken the HORIZONTAL side
@@ -207,8 +207,9 @@ static void draw_wall_and_floor_slice(color_t *vertical_buffer, float *vertical_
     // thanks to https://lodev.org/cgtutor/raycasting2.html for the tip
     if (offset_y != depth_y_lookup.offset_y) {
         // shall refresh the lookup table
-        for (int16_t y = SCREEN_HEIGHT/2+1; y < SCREEN_HEIGHT; y++) {
-            depth_y_lookup.table[y-SCREEN_HEIGHT/2] = float_to_fixed16((offset_y + SCREEN_HEIGHT/2) / (float)(y - SCREEN_HEIGHT/2));
+        for (int16_t y = 0; y < SCREEN_HEIGHT; y++) {
+            if (y == SCREEN_HEIGHT/2) continue; //dst = INFINITY
+            depth_y_lookup.table[y] = float_to_fixed16((offset_y + SCREEN_HEIGHT/2) / (float)(y - SCREEN_HEIGHT/2));
         }
 
         depth_y_lookup.offset_y = offset_y;
@@ -241,6 +242,7 @@ static void draw_wall_and_floor_slice(color_t *vertical_buffer, float *vertical_
 
     // set the first texture for the floor
     color_t *floor_texture = textures.wall_textures + TEXTURE_SIZE*6;
+    color_t *ceiling_texture = textures.wall_textures + TEXTURE_SIZE;
 
     if (draw_end < 0) draw_end = SCREEN_HEIGHT;
     fixed16_t inv_dst = float_to_fixed16(1 / hitInfo.distance);
@@ -253,15 +255,15 @@ static void draw_wall_and_floor_slice(color_t *vertical_buffer, float *vertical_
 
     for (int16_t y = draw_end+1; y < SCREEN_HEIGHT; y++) {
         // current distance to pixel
-        fixed16_t current_distance = depth_y_lookup.table[y-SCREEN_HEIGHT/2];
+        fixed16_t floor_dst = depth_y_lookup.table[y];
 
         // if the depth of this pixel is already less don't render there is some thing in front
-        if (vertical_depth[y] < fixed16_to_float(current_distance)) {
+        if (vertical_depth[y] < fixed16_to_float(floor_dst)) {
             continue;
         }
 
         // compute the current weight (distance in range [0, wall_distance])
-        fixed16_t weight = fixed16_mul(current_distance, inv_dst);
+        fixed16_t weight = fixed16_mul(floor_dst, inv_dst);
 
         // find the texture pos in range [0, 1]
         fixed16_t current_floor_pos_x = origine_x + fixed16_mul(weight, dx);
@@ -271,9 +273,14 @@ static void draw_wall_and_floor_slice(color_t *vertical_buffer, float *vertical_
         int32_t texture_x = FIXED16_TO_INT(fixed16_mul(FRAC_f16(current_floor_pos_x), INT_TO_FIXED16(TEXTURE_WIDTH)));
         int32_t texture_y = FIXED16_TO_INT(fixed16_mul(FRAC_f16(current_floor_pos_y), INT_TO_FIXED16(TEXTURE_HEIGHT)));
         
+        // floor
         // texture laid down on the side
         vertical_buffer[y] = floor_texture[texture_x * TEXTURE_HEIGHT + texture_y];
-        vertical_depth [y] = fixed16_to_float(current_distance);
+        vertical_depth [y] = fixed16_to_float(floor_dst);
+
+        // ceiling
+        vertical_buffer[SCREEN_HEIGHT - y] = ceiling_texture[texture_x * TEXTURE_HEIGHT + texture_y];
+        vertical_depth [SCREEN_HEIGHT - y] = fixed16_to_float(floor_dst);
     }
 }
 
@@ -345,10 +352,8 @@ static inline bool in_rect(rect_t rect, uint16_t x, uint16_t y) {
 }
 
 static int16_t in_any_rect(LayeredTextures layers, uint16_t x, uint16_t y) {
-    for (uint16_t i = 0; i < layers.num_rects; i++) {
-        if (!in_rect(layers.rects[i], x, y)) continue;
-        return i;
-    }
+    for (uint16_t i = 0; i < layers.num_rects; i++)
+        if (in_rect(layers.rects[i], x, y)) return i;
     return -1;
 }
 
@@ -421,7 +426,7 @@ void raycast_render(Player player, Maze *maze, Entity *entities, size_t num_enti
         HitInfo hitInfo = raycast_single_ray(ray, maze);
 
         // draw the wall and the floor
-        int16_t y_offset = 20; // offset Y of the player compared to the center of the screen
+        int16_t y_offset = 0; // offset Y of the player compared to the center of the screen
         draw_wall_and_floor_slice(vertical_buffer, vertical_depth, ray, hitInfo, y_offset, textures);
 
         // recompute wall_enter for caching
@@ -498,8 +503,8 @@ void get_entities_depth(Player player, EntityDepth *entities_depth, Entity *enti
         }
 
         // compute the x position on the screen and the width
-        int16_t entity_screen_pos_x = (int16_t)(SCREEN_WIDTH / 2 * (1 + transformed_pos.x / transformed_pos.y));
-        int16_t entity_width =  abs((int16_t)(SCREEN_HEIGHT / (2.0f * transformed_pos.y)));
+        int16_t entity_screen_pos_x = (int16_t)SCREEN_WIDTH / 2 * (1 + transformed_pos.x / transformed_pos.y);
+        int16_t entity_width =  (int16_t)SCREEN_HEIGHT / (2.0f * transformed_pos.y); // transform_pos.y > NEAR_CAM_DEPTH > 0
 
         // check for overflows
         if ( entity_screen_pos_x - entity_width / 2 >= SCREEN_WIDTH 
@@ -521,7 +526,7 @@ void get_entities_depth(Player player, EntityDepth *entities_depth, Entity *enti
         for (int16_t slice = draw_start_x; slice < draw_end_x; slice++, texture_x += delta_texture_x) {
             push_entity_to_depth(
                 &entities_depth[slice], 
-                (EntitySlice) { .type = entity_type, .texture_x = texture_x, .dst = transformed_pos.y }
+                (EntitySlice) { .type = entity_type, .texture_x = (uint8_t)texture_x, .dst = transformed_pos.y }
             );
         }
     }

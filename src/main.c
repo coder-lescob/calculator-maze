@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <malloc.h>
+#include <stdbool.h>
 
 // system specific wrappers
 #include "platform.h"
