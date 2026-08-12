@@ -16,5 +16,5 @@ inline fixed16_t fixed16_mul(fixed16_t a, fixed16_t b) {
 }
 
 inline fixed16_t fixed16_div(fixed16_t a, fixed16_t b) {
-    return (fixed16_t)(((int64_t)a / b) >> 16);
+    return (fixed16_t)(((int64_t)(a << 16) / b));
 }
