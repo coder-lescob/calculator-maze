@@ -10,6 +10,7 @@
 #include "input.h"
 #include "timings.h"
 #include "texture_loader.h"
+#include "unwind.h"
 
 // game files
 #include "vec.h"
@@ -33,14 +34,17 @@ const uint32_t eadk_api_level  __attribute__((section(".rodata.eadk_api_level"))
 #endif
 
 int main(void) {
+
+    // create systems like renderer and keyboard
     create_renderer();
-    
     keyboard_t keyboard = create_keyboard();
+    
+    // set the panic handler
+    SET_PANIC_HANDLER({
+        goto destroy_systems;
+    });
+
     textures_t textures = load_textures();
-    if (!textures.successful_load) {
-        // exit application
-        goto endapp_init;
-    }
     
     uint64_t last_time = get_time();
     float dt = 0;
@@ -65,6 +69,10 @@ int main(void) {
     // generate the maze and create the player object
     Maze maze = generate_maze(20, 20);
     Player player = new_player((Vec2) { 0.5f, 0.5f }, (Vec2) { 1, 0 }, PI/3 /* 60° */);
+
+    SET_PANIC_HANDLER({
+        goto free_game_ressources;
+    })
 
     // spawn the entities
     Entity entities[] = {
@@ -112,11 +120,12 @@ int main(void) {
         last_time = get_time();
     }
 
+free_game_ressources:
     // free the maze
     free_maze(&maze);
     unload_textures(&textures);
 
-endapp_init:
+destroy_systems:
     // destroy the keyboard
     destroy_keyboard(&keyboard);
     destroy_renderer();

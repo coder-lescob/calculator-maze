@@ -4,6 +4,7 @@
 #include "texture_loader.h"
 #include "rendering.h"
 #include "fixed_points.h"
+#include "errors.h"
 #include <assert.h>
 #include <string.h>
 
@@ -552,8 +553,10 @@ void push_entity_to_depth(EntityDepth *depth, EntitySlice slice) {
     EntitySlice *new_entities = realloc(depth->entities, new_capacity * sizeof(EntitySlice));
 
     // allocation failed
-    // TODO: unwind execution and show error screen
-    if (new_entities == NULL) return;
+    if (new_entities == NULL) {
+        error_screen("entity buffer reallocation failed");
+        return;
+    }
 
     // put the entity array back in the entity depth struct
     depth->entities = new_entities; // update the pointer

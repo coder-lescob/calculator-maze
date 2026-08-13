@@ -2,6 +2,7 @@
 #include "platform.h"
 
 #include "timings.h"
+#include "unwind.h"
 #include <stdlib.h>
 
 #ifdef PLATFORM_CALCULATOR
@@ -60,4 +61,6 @@ void error_screen(char *msg) {
 
     // destroy the keyboard
     destroy_keyboard(&keyboard);
+
+    PANIC();
 }
